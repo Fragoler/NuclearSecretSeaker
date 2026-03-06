@@ -2,36 +2,56 @@ import sys
 import re
 import os
 from pathlib import Path
+import json
 
 mail_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-phone_regex = r'\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}'
+phone_regex = r'^((8|\+7)[\- ]?)?(\(?\d{3}\)?[\- ]?)?\d{3}[\- ]?\d{2}[\- ]?\d{2}$'
 ipv4_regex = r'\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b'
-ipv6_regex = r'\b(?:[A-Fa-f0-9]{1,4}:){7}[A-Fa-f0-9]{1,4}\b|\b(?:[A-Fa-f0-9]{1,4}:){1,7}:|\b::(?:[A-Fa-f0-9]{1,4}:){0,6}[A-Fa-f0-9]{1,4}\b'
+ipv6_regex = r'^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$'
 mac_regex = r'\b(?:[0-9A-Fa-f]{2}[:-]){5}(?:[0-9A-Fa-f]{2})\b'
 cidr_regex = r'\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)/(?:3[0-2]|[12]?[0-9])\b'
 patterns = [mail_regex, phone_regex, ipv4_regex, ipv6_regex, mac_regex, cidr_regex]
 
+dict_pattern = {
+    mail_regex: ('mail', 135),
+    phone_regex: ('phone', 170),
+    ipv4_regex: ('ipv4', 200),
+    ipv6_regex: ('ipv6', 70),
+    mac_regex: ('mac', 90),
+    cidr_regex: ('cidr', 120)
+}
+
 def main():
     argc = len(sys.argv)
     root_dir = ".."
-    compiled_patterns = [re.compile(p, re.IGNORECASE) for p in patterns]
+    compiled_patterns = [(re.compile(p, re.IGNORECASE), dict_pattern[p][0], dict_pattern[p][1]) for p in patterns]
+    results = []
+    
     for root, dirs, files in os.walk(root_dir):
         for file in files:
+            file_path = Path(root) / file
             try:
-                file_path = Path(root) / file
                 with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                    content = f.read()
-                
-                    for i, pattern in enumerate(compiled_patterns):
-                        matches = pattern.findall(content)
-                        if matches:
-                            print(f"\n {file_path}")
-                            print(f"  Паттерн {i}: {patterns[i][:50]}...")
-                            print(f"  Найдено: {len(set(matches))} уникальных")
-                            print(f"  Примеры: {list(set(matches))}")
-                            
+                    lines = f.readlines()
+                    
+                    for line_num, line in enumerate(lines, 1):
+                        for pattern, description, level in compiled_patterns:
+                            matches = pattern.findall(line)
+                            if matches:
+                                for match in set(matches):
+                                    result = {
+                                        "file": str(file_path),
+                                        "line": str(line_num),
+                                        "description": description,
+                                        "snippet": match,
+                                        "level": level
+                                    }
+                                    results.append(result)
+                                    
             except Exception as e:
-                print(f"Ошибка чтения {file_path}: {e}")
+                pass
+    
+    print(json.dumps(results, indent=4, ensure_ascii=False))
 
 if __name__ == '__main__':
     main()
