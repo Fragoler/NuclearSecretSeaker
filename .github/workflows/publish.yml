@@ -57,11 +57,6 @@ jobs:
         with:
           name: python-artifacts
           path: dist
-    
-      - name: Setup GPG key
-        run: |
-          echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
-          echo "${{ secrets.GPG_PUBLIC_KEY }}" | gpg --batch --import
 
       - name: Extract version from tag
         id: extract_version
@@ -94,6 +89,23 @@ jobs:
 
           cd gh-pages/apt
           dpkg-scanpackages . /dev/null | gzip -9c > Packages.gz
+          
+      - name: Setup GPG key
+        run: |
+          echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
+          echo "${{ secrets.GPG_PUBLIC_KEY }}" | gpg --batch --import
+          gpg --armor --export > gh-pages/apt/KEY.gpg
+
+      - name: Create sources.list
+        run: |
+          REPO_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/apt/"
+          echo "deb [signed-by=/usr/share/keyrings/nuclearss-keyring.gpg] $REPO_URL ./" > gh-pages/apt/nuclearss.list
+
+      - name: Update Packages index
+        run: |
+          cd gh-pages/apt
+          apt-ftparchive release . > Release
+          gpg --default-key -abs -o Release.gpg Release
 
       - name: Push to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
