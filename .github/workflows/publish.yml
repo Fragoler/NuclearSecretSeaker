@@ -1,0 +1,95 @@
+﻿name: Build and Push Python Artifacts
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install PyInstaller
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller
+
+      - name: Build pdf-generator/main.py
+        run: |
+          pyinstaller --onefile --distpath dist/pdf-generator pdf-generator/main.py
+
+      - name: Build seaker/main.py
+        run: |
+          pyinstaller --onefile --distpath dist/seaker seaker/main.py
+
+      - name: Build tui/src/main.py
+        run: |
+          pyinstaller --onefile --distpath dist/tui tui/src/main.py
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: python-artifacts
+          path: |
+            dist/pdf-generator/main
+            dist/seaker/main
+            dist/tui/main
+
+  build-and-publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup GPG key
+        run: |
+          echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
+          echo "${{ secrets.GPG_PUBLIC_KEY }}" | gpg --batch --import
+
+      - name: Extract version from tag
+        id: extract_version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "::set-output name=version::$VERSION"
+
+      - name: Create .deb package
+        run: |
+          mkdir -p package/usr/local/bin
+          cp dist/pdf-generator/main package/usr/local/bin/nuclearss-pdf
+          cp dist/seaker/main package/usr/local/bin/nuclearss-seaker
+          cp dist/tui/main package/usr/local/bin/nuclearss
+
+          mkdir -p package/DEBIAN
+          echo "Package: nuclearss" > package/DEBIAN/control
+          echo "Version: ${{ steps.extract_version.outputs.version }}" >> package/DEBIAN/control
+          echo "Section: base" >> package/DEBIAN/control
+          echo "Priority: optional" >> package/DEBIAN/control
+          echo "Architecture: amd64" >> package/DEBIAN/control
+          echo "Maintainer: Your Name <your.email@example.com>" >> package/DEBIAN/control
+          echo "Description: Collection of binaries for nuclearss" >> package/DEBIAN/control
+
+          dpkg-deb --build package nuclearss.deb
+
+      - name: Setup GitHub Pages
+        run: |
+          mkdir -p gh-pages/apt
+          mv nuclearss.deb gh-pages/apt/
+
+          cd gh-pages/apt
+          dpkg-scanpackages . /dev/null | gzip -9c > Packages.gz
+
+      - name: Push to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: gh-pages
