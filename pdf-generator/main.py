@@ -1,14 +1,13 @@
 import os
-from typing import List, Dict
-from markdown_pdf import MarkdownPdf, Section
-import fitz  # PyMuPDF
-import json
 import sys
+import json
+from typing import List, Dict
+import base64
 
 def generate_pdf_from_markdown(
     input_md_path: str,
     output_pdf_path: str = 'report.pdf',
-    background_image_path: str = 'background.jpg'
+    background_image_path: str = 'background.png'
 ) -> None:
     """
     Generates a PDF file from a Markdown report using markdown-pdf.
@@ -82,12 +81,19 @@ def generate_pdf_from_markdown(
             margin: 0.7em 0;
         }
         code {
+            display: inline;
             background: #fcfcfc;
             border: 1px solid #dedede;
             border-radius: 0.3em;
             padding: 0.2em 0.5em;
             font-family: "Fira Code Retina", monospace;
-            font-size: 0.7em;
+            font-size: 0.85em;
+        }
+        pre {
+            display: block;
+            background: transparent;
+            padding: 0;
+            margin: 0;
         }
         pre code {
             display: block;
@@ -98,11 +104,12 @@ def generate_pdf_from_markdown(
         }
         .snippet-box {
             display: inline-block;
-            padding: 4px 8px;
-            border-radius: 4px;
+            background: #fcfcfc;
+            border: 1px solid #dedede;
+            border-radius: 0.3em;
+            padding: 0.2em 0.5em;
             font-family: "Fira Code Retina", monospace;
-            font-size: 0.75em;
-            margin: 5px 0;
+            font-size: 0.85em;
         }
         ul, ol {
             margin-bottom: 1.5em;
@@ -220,7 +227,7 @@ def generate_report(findings: List[Dict[str, str]], output_md_path: str = 'repor
 
             # Format: description with file and line, snippet highlighted with color
             md_file.write(f'{description} in `{file_path}` on line `{line_num}`:\n\n')
-            md_file.write(f'<div class="snippet-box" style="background-color: {color}; color: #000000;">{snippet}</div>\n\n')
+            md_file.write(f'<span style="display: inline-block; background-color: {color}; color: #000000; border: 1px solid {color}; border-radius: 0.3em; padding: 0.2em 0.5em; font-family: monospace; font-size: 0.85em;">{snippet}</span>\n\n')
 
         md_file.write('---\n')
         md_file.write('*Generated automatically. Review findings and take appropriate action.*\n')
@@ -264,9 +271,210 @@ def parse_json() -> List[Dict[str, str]]:
         sys.exit(1)
 
 
+def generate_html_report(
+    findings: List[Dict[str, str]],
+    output_html_path: str = 'report.html',
+    background_image_path: str = 'background.png'
+) -> None:
+    """
+    Generates an HTML report with background image.
+
+    :param findings: List of finding dictionaries
+    :param output_html_path: Path to save the HTML file
+    :param background_image_path: Path to background image (optional)
+    """
+    def level_to_rgb(level: int) -> str:
+        level = max(0, min(255, level))
+        r = level
+        g = 255 - level
+        b = 0
+        return f"#{r:02X}{g:02X}{b:02X}"
+
+    # Encode background image as base64 if it exists
+    bg_image_data = ""
+    if background_image_path and os.path.exists(background_image_path):
+        with open(background_image_path, 'rb') as img_file:
+            img_data = base64.b64encode(img_file.read()).decode('utf-8')
+            bg_image_data = f"data:image/jpeg;base64,{img_data}"
+
+    # Calculate summary
+    total_findings = len(findings)
+    avg_level = sum(f.get('level', 0) for f in findings) / total_findings if total_findings > 0 else 0
+
+    # Build findings HTML
+    findings_html = ""
+    for finding in findings:
+        file_path = finding.get('file', 'N/A')
+        line_num = finding.get('line', 'N/A')
+        description = finding.get('description', 'Potential secret detected')
+        snippet = finding.get('snippet', '')
+        level = int(finding.get('level', 128))
+        color = level_to_rgb(level)
+
+        findings_html += f'''
+        <div class="finding">
+            <p class="finding-desc">{description} in <code>{file_path}</code> on line <code>{line_num}</code>:</p>
+            <span class="snippet" style="background-color: {color}; border-color: {color};">{snippet}</span>
+        </div>
+        '''
+
+    # Background image CSS or empty
+    bg_css = ""
+    if bg_image_data:
+        bg_css = f'''
+        .background-image {{
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: auto;
+            height: auto;
+            max-width: 900px;
+            z-index: -1;
+            opacity: 1;
+        }}
+        '''
+
+    html_content = f'''<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secret Leak Report</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css?family=Raleway:400,400i,500,500i,600,600i,700,700i');
+        
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
+        
+        body {{
+            font-family: "Raleway", sans-serif;
+            font-size: 11pt;
+            line-height: 1.6;
+            color: #545454;
+            max-width: 46em;
+            margin: 2em auto;
+            padding: 1.6em 3.15em;
+            background-color: #fff;
+        }}
+        
+        {bg_css}
+        
+        h1 {{
+            font-family: "Raleway", sans-serif;
+            font-weight: 700;
+            color: #333;
+            font-size: 1.6em;
+            line-height: 1.3;
+            margin-bottom: 0.8em;
+        }}
+        
+        h2 {{
+            font-family: "Raleway", sans-serif;
+            font-weight: 600;
+            color: #333;
+            font-size: 1.3em;
+            margin-top: 2em;
+            margin-bottom: 0.6em;
+        }}
+        
+        p {{
+            margin-bottom: 1.5em;
+        }}
+        
+        code {{
+            display: inline;
+            background: #fcfcfc;
+            border: 1px solid #dedede;
+            border-radius: 0.3em;
+            padding: 0.2em 0.5em;
+            font-family: "Fira Code Retina", monospace;
+            font-size: 0.85em;
+        }}
+        
+        .snippet {{
+            display: inline-block;
+            border: 1px solid;
+            border-radius: 0.3em;
+            padding: 0.2em 0.5em;
+            font-family: "Fira Code Retina", monospace;
+            font-size: 0.85em;
+            margin: 0.5em 0;
+        }}
+        
+        .finding {{
+            margin-bottom: 1.5em;
+        }}
+        
+        .finding-desc {{
+            margin-bottom: 0.5em;
+        }}
+        
+        .finding-desc code {{
+            background: transparent;
+            border: none;
+            padding: 0;
+            font-size: 1em;
+        }}
+        
+        hr {{
+            height: 1px;
+            border: 0;
+            background-color: #dedede;
+            margin: 1.5em 0;
+        }}
+        
+        .summary {{
+            background: #f9f9f9;
+            padding: 1em;
+            border-radius: 0.5em;
+            margin-bottom: 1.5em;
+        }}
+        
+        .summary ul {{
+            list-style: none;
+            margin: 0;
+        }}
+        
+        .summary li {{
+            margin-bottom: 0.5em;
+        }}
+    </style>
+</head>
+<body>
+    {"<img class=\"background-image\" src=\"" + bg_image_data + "\" alt=\"\">" if bg_image_data else ""}
+    
+    <h1>Secret Leak Report</h1>
+    <p><strong>Generated:</strong> {os.popen('date').read().strip()}</p>
+    
+    <h2>Summary</h2>
+    <div class="summary">
+        <ul>
+            <li><strong>Total findings:</strong> {total_findings}</li>
+            <li><strong>Average risk level:</strong> {avg_level:.1f}/255</li>
+        </ul>
+    </div>
+    
+    <h2>Findings</h2>
+    {findings_html}
+    
+    <hr>
+    <p><em>Generated automatically. Review findings and take appropriate action.</em></p>
+</body>
+</html>'''
+
+    dirname = os.path.dirname(output_html_path)
+    if dirname:
+        os.makedirs(dirname, exist_ok=True)
+
+    with open(output_html_path, 'w', encoding='utf-8') as html_file:
+        html_file.write(html_content)
+
+
 if __name__ == '__main__':
     findings = parse_json()
 
-    generate_report(findings, 'report.md')
-    generate_pdf_from_markdown('report.md', 'report.pdf')
-    print("Report generated: report.md, report.pdf", file=sys.stderr)
+    generate_html_report(findings, 'report.html')
+    print("Report generated: report.html", file=sys.stderr)
