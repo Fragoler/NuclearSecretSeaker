@@ -76,6 +76,8 @@ jobs:
           cp dist/seaker/main package/usr/local/bin/nuclearss-seaker
           cp dist/tui/main package/usr/local/bin/nuclearss
 
+          chmod 755 package/usr/local/bin/nuclearss*
+
           mkdir -p package/DEBIAN
           echo "Package: nuclearss" > package/DEBIAN/control
           echo "Version: ${{ steps.extract_version.outputs.version }}" >> package/DEBIAN/control
