@@ -93,14 +93,19 @@ jobs:
           mv nuclearss.deb gh-pages/apt/
           
           cd gh-pages/apt
-          dpkg-scanpackages . /dev/null | gzip -9c > Packages.gz
-          echo "${{ secrets.GPG_PUBLIC_KEY }}" > KEY.gpg
           
-          # sources.list
+          echo "Create Packages file and compress it"
+          dpkg-scanpackages . /dev/null > Packages
+          gzip -9c Packages > Packages.gz
+          
+          echo "Create GPG keyring" 
+          gpg --armor --export > KEY.gpg
+          
+          echo "Create repository configuration"
           REPO_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/apt/"
           echo "deb [signed-by=/usr/share/keyrings/nuclearss-keyring.gpg] $REPO_URL ./" > nuclearss.list
           
-          # Release файлы
+          echo "Create Release file and sign it"
           apt-ftparchive release . > Release
           gpg --default-key -abs -o Release.gpg Release
           
