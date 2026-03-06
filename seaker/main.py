@@ -3,8 +3,7 @@ import re
 import os
 from pathlib import Path
 import json
-
-mail_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+mail_regex = r'\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b'
 phone_regex = r'^((8|\+7)[\- ]?)?(\(?\d{3}\)?[\- ]?)?\d{3}[\- ]?\d{2}[\- ]?\d{2}$'
 ipv4_regex = r'\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b'
 ipv6_regex = r'^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$'
@@ -21,9 +20,40 @@ dict_pattern = {
     cidr_regex: ('cidr', 120)
 }
 
+def print_help():
+    help_text = """
+        Usage: program [options]
+
+        Options:
+          -h, --help        See this message
+          -i DIR, --input DIR  Pick root directory (default: .)
+    """
+    print(help_text)
+
 def main():
     argc = len(sys.argv)
-    root_dir = ".."
+    root_dir = "."
+    if argc == 1:
+        pass
+    else:
+        i = 1
+        while i < argc:
+            if sys.argv[i] in ['-h', '--help']:
+                print_help()
+                return
+            elif sys.argv[i] in ['-i', '--input']:
+                if i + 1 < argc:
+                    root_dir = sys.argv[i + 1]
+                    i += 2
+                else:
+                    print("DIR expected after -i (--input) option")
+                    print_help()
+                    return
+            else:
+                print(f"Unknown option: {sys.argv[i]}")
+                print_help()
+                return
+    
     compiled_patterns = [(re.compile(p, re.IGNORECASE), dict_pattern[p][0], dict_pattern[p][1]) for p in patterns]
     results = []
     
