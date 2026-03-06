@@ -13,7 +13,7 @@ patterns = [mail_regex, phone_regex, ipv4_regex, ipv6_regex, mac_regex, cidr_reg
 
 def main():
     argc = len(sys.argv)
-    root_dir = "."
+    root_dir = ".."
     compiled_patterns = [re.compile(p, re.IGNORECASE) for p in patterns]
     for root, dirs, files in os.walk(root_dir):
         for file in files:
