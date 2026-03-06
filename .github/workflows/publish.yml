@@ -68,6 +68,9 @@ jobs:
         run: |
           echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
           echo "${{ secrets.GPG_PUBLIC_KEY }}" | gpg --batch --import
+          
+          mkdir -p ~/.gnupg
+          echo "pinentry-mode loopback" > ~/.gnupg/gpg.conf
 
       - name: Create .deb package
         run: |
@@ -107,7 +110,7 @@ jobs:
           
           echo "Create Release file and sign it"
           apt-ftparchive release . > Release
-          gpg --default-key -abs -o Release.gpg Release
+          gpg -abs -o Release.gpg Release
           
       - name: Push to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
