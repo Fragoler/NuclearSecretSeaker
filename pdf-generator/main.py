@@ -1,14 +1,20 @@
 import os
 from typing import List, Dict
 from markdown_pdf import MarkdownPdf, Section
+import fitz  # PyMuPDF
 
 
-def generate_pdf_from_markdown(input_md_path: str, output_pdf_path: str = 'report.pdf') -> None:
+def generate_pdf_from_markdown(
+    input_md_path: str,
+    output_pdf_path: str = 'report.pdf',
+    background_image_path: str = 'background.jpg'
+) -> None:
     """
     Generates a PDF file from a Markdown report using markdown-pdf.
 
     :param input_md_path: Path to the input Markdown file
     :param output_pdf_path: Path to save the output PDF file
+    :param background_image_path: Path to background image (optional)
     """
     if not os.path.exists(input_md_path):
         raise FileNotFoundError(f"Markdown file not found: {input_md_path}")
@@ -127,7 +133,37 @@ def generate_pdf_from_markdown(input_md_path: str, output_pdf_path: str = 'repor
     if dirname:
         os.makedirs(dirname, exist_ok=True)
 
-    pdf.save(output_pdf_path)
+    import tempfile
+    temp_path = tempfile.NamedTemporaryFile(suffix='.pdf', delete=False).name
+    pdf.save(temp_path)
+
+    doc = fitz.open(temp_path)
+
+    if background_image_path and os.path.exists(background_image_path):
+        img = fitz.open(background_image_path)
+        img_page = img[0]
+        img_width = img_page.rect.width
+        img_height = img_page.rect.height
+        page_width = 595
+        page_height = 842
+
+        x = page_width - img_width
+        y = 0
+        img_rect = fitz.Rect(x, y, x + img_width, y + img_height)
+
+        for page in doc:
+            page.insert_image(
+                img_rect,
+                pixmap=img_page.get_pixmap(),
+                overlay=False,
+            )
+
+        img.close()
+
+    doc.save(output_pdf_path)
+    doc.close()
+
+    os.unlink(temp_path)
 
 
 def generate_report(findings: List[Dict[str, str]], output_md_path: str = 'report.md') -> None:
@@ -182,7 +218,6 @@ def generate_report(findings: List[Dict[str, str]], output_md_path: str = 'repor
             color = level_to_rgb(level)
 
             # Format: description with file and line, snippet highlighted with color
-            # Use div with inline background-color for PDF compatibility
             md_file.write(f'{description} in `{file_path}` on line `{line_num}`:\n\n')
             md_file.write(f'<div class="snippet-box" style="background-color: {color}; color: #000000;">{snippet}</div>\n\n')
 
