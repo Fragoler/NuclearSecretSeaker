@@ -4,24 +4,90 @@ import os
 from pathlib import Path
 import json
 
+
+PATTERNS_FILE = Path(__file__).parent / "patterns.json"
+
 DEFAULT_CONFIG_PATH = ".nuclearss"
 
-mail_regex = r'\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b'
-phone_regex = r'^((8|\+7)[\- ]?)?(\(?\d{3}\)?[\- ]?)?\d{3}[\- ]?\d{2}[\- ]?\d{2}$'
-ipv4_regex = r'\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b'
-ipv6_regex = r'^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$'
-mac_regex = r'\b(?:[0-9A-Fa-f]{2}[:-]){5}(?:[0-9A-Fa-f]{2})\b'
-cidr_regex = r'\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)/(?:3[0-2]|[12]?[0-9])\b'
-patterns = [mail_regex, phone_regex, ipv4_regex, ipv6_regex, mac_regex, cidr_regex]
+def load_patterns_from_json(json_path):
+    """
+    Load secret patterns from JSON file.
+    
+    JSON format:
+    {
+        "patterns": [
+            {"name": "Pattern Name", "regex": "regex_here", "priority": 200},
+            ...
+        ]
+    }
+    
+    Returns:
+        dict: {regex_pattern: (description, priority)}
+    """
+    dict_pattern = {}
+    
+    with open(json_path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+    
+    for entry in data.get('patterns', []):
+        name = entry.get('name', 'Unknown')
+        regex = entry.get('regex', '')
+        priority = entry.get('priority', 100)
+        
+        if regex:
+            dict_pattern[regex] = (name, priority)
+    
+    return dict_pattern
 
-dict_pattern = {
-    mail_regex: ('mail', 135),
-    phone_regex: ('phone', 170),
-    ipv4_regex: ('ipv4', 200),
-    ipv6_regex: ('ipv6', 70),
-    mac_regex: ('mac', 90),
-    cidr_regex: ('cidr', 120)
-}
+
+dict_pattern = load_patterns_from_json(PATTERNS_FILE)
+
+patterns = list(dict_pattern.keys())
+
+
+def get_snippet_with_context(line, match, context_chars=40):
+    """
+    Extract snippet with context around the match.
+    Includes characters before and after the match for better context.
+    """
+    match_start = line.find(match)
+    if match_start == -1:
+        return match
+    
+    start = max(0, match_start - context_chars)
+    end = min(len(line), match_start + len(match) + context_chars)
+    
+    snippet = line[start:end].rstrip('\n\r')
+    
+    if start > 0:
+        snippet = "..." + snippet
+    if end < len(line):
+        snippet = snippet + "..."
+    
+    return snippet.strip()
+
+
+def deduplicate_results(results):
+    """
+    Deduplicate results by keeping highest-priority matches per line.
+    For each file+line combination, keeps only the highest-priority secret.
+    """
+    grouped = {}
+    for r in results:
+        key = (r["file"], r["line"])
+        if key not in grouped:
+            grouped[key] = []
+        grouped[key].append(r)
+
+    deduplicated = []
+    for key, matches in grouped.items():
+        matches.sort(key=lambda x: x["level"], reverse=True)
+        
+        if matches:
+            deduplicated.append(matches[0])
+
+    return deduplicated
+
 
 def print_help():
     help_text = """
@@ -77,9 +143,14 @@ def parse_config(config_path):
     return ignore_dir_list, ignore_file_list, ignore_matches
 
 def find_regex(root_dir: str = ".", ignore_dir_list: list = [], ignore_file_list: list = [], ignore_matches: list = []):
-    compiled_patterns = [(re.compile(p, re.IGNORECASE), dict_pattern[p][0], dict_pattern[p][1]) for p in patterns]
-    results = []
+    compiled_patterns = [
+        (re.compile(p, re.IGNORECASE), dict_pattern[p][0], dict_pattern[p][1])
+        for p in patterns
+    ]
+    compiled_patterns.sort(key=lambda x: x[2], reverse=True)
     
+    results = []
+
     for root, dirs, files in os.walk(root_dir):
         dirs[:] = [d for d in dirs if os.path.join(root, d) not in ignore_dir_list and d not in ignore_dir_list]
         for file in files:
@@ -90,26 +161,32 @@ def find_regex(root_dir: str = ".", ignore_dir_list: list = [], ignore_file_list
             try:
                 with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                     lines = f.readlines()
+
                     for line_num, line in enumerate(lines, 1):
                         for pattern, description, level in compiled_patterns:
                             matches = pattern.findall(line)
                             if matches:
                                 for match in set(matches):
-                                    if match in ignore_matches:
-                                        continue
+                                    snippet = get_snippet_with_context(line, match)
                                     result = {
-                                        "file": str(file_path_str),
+                                        "file": str(file_path),
                                         "line": str(line_num),
                                         "description": description,
-                                        "snippet": match,
+                                        "snippet": snippet,
+                                        "secret": match,
                                         "level": level
                                     }
                                     results.append(result)
-            except Exception as e:
-                print(f"Could not read \"{file_path_str}\"")
-    
-    print(json.dumps(results, indent=4, ensure_ascii=False))
 
+            except Exception as e:
+                pass
+
+    results = deduplicate_results(results)
+    
+    results.sort(key=lambda x: (-x["level"], x["file"], int(x["line"])))
+
+    print(json.dumps(results, indent=4, ensure_ascii=False))
+    
 def main():
     argc = len(sys.argv)
     root_dir = "."
