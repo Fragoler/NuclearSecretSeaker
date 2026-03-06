@@ -64,6 +64,11 @@ jobs:
           VERSION=${GITHUB_REF#refs/tags/v}
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
+      - name: Setup GPG key
+        run: |
+          echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
+          echo "${{ secrets.GPG_PUBLIC_KEY }}" | gpg --batch --import
+
       - name: Create .deb package
         run: |
           mkdir -p package/usr/local/bin
@@ -77,36 +82,28 @@ jobs:
           echo "Section: base" >> package/DEBIAN/control
           echo "Priority: optional" >> package/DEBIAN/control
           echo "Architecture: amd64" >> package/DEBIAN/control
-          echo "Maintainer: Your Name <your.email@example.com>" >> package/DEBIAN/control
-          echo "Description: Collection of binaries for nuclearss" >> package/DEBIAN/control
+          echo "Maintainer: Fragoler <e.f.oleg@mail.com>" >> package/DEBIAN/control
+          echo "Description: nuclearss - a util for protection git repo from leaking secrets" >> package/DEBIAN/control
 
           dpkg-deb --build package nuclearss.deb
 
-      - name: Setup GitHub Pages
+      - name: Setup APT repository
         run: |
           mkdir -p gh-pages/apt
           mv nuclearss.deb gh-pages/apt/
-
+          
           cd gh-pages/apt
           dpkg-scanpackages . /dev/null | gzip -9c > Packages.gz
+          gpg --armor --export > KEY.gpg
           
-      - name: Setup GPG key
-        run: |
-          echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
-          echo "${{ secrets.GPG_PUBLIC_KEY }}" | gpg --batch --import
-          gpg --armor --export > gh-pages/apt/KEY.gpg
-
-      - name: Create sources.list
-        run: |
+          # sources.list
           REPO_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/apt/"
-          echo "deb [signed-by=/usr/share/keyrings/nuclearss-keyring.gpg] $REPO_URL ./" > gh-pages/apt/nuclearss.list
-
-      - name: Update Packages index
-        run: |
-          cd gh-pages/apt
+          echo "deb [signed-by=/usr/share/keyrings/nuclearss-keyring.gpg] $REPO_URL ./" > nuclearss.list
+          
+          # Release файлы
           apt-ftparchive release . > Release
           gpg --default-key -abs -o Release.gpg Release
-
+          
       - name: Push to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
