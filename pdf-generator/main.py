@@ -14,7 +14,6 @@ def generate_pdf_from_markdown(input_md_path: str, output_pdf_path: str = 'repor
         raise FileNotFoundError(f"Markdown file not found: {input_md_path}")
 
     user_css = """
-        @import url('https://fonts.googleapis.com/css?family=Raleway:400,400i,500,500i,600,600i,700,700i');
         @page {
             size: A4;
             margin: 3em;
@@ -90,29 +89,13 @@ def generate_pdf_from_markdown(input_md_path: str, output_pdf_path: str = 'repor
             padding: 1.2em 1em;
             margin: 0 0 1.5em;
         }
-        table {
-            width: 100%;
-            margin-bottom: 1.5em;
-            border-collapse: collapse;
-        }
-        table tr {
-            border-bottom: 1px solid #dedede;
-        }
-        table th {
-            font-weight: 700;
-            background-color: #f5f5f5;
-        }
-        table td, table th {
-            vertical-align: top;
-            padding: 0.4em 0.8em;
-            font-size: 0.95em;
-            border: 1px solid #dedede;
-        }
-        thead tr {
-            border-bottom: 2px solid #dedede;
-        }
-        tr:nth-child(even) {
-            background-color: #f9f9f9;
+        .snippet-box {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-family: "Fira Code Retina", monospace;
+            font-size: 0.75em;
+            margin: 5px 0;
         }
         ul, ol {
             margin-bottom: 1.5em;
@@ -150,67 +133,67 @@ def generate_pdf_from_markdown(input_md_path: str, output_pdf_path: str = 'repor
 def generate_report(findings: List[Dict[str, str]], output_md_path: str = 'report.md') -> None:
     """
     Generates a beautiful Markdown report for potential secret leaks.
-    
+
     :param findings: List of dictionaries, each containing:
         - 'file': Path to the file
         - 'line': Line number (as string)
-        - 'type': Type of secret (e.g., 'API Key')
-        - 'risk': Risk level (e.g., 'High', 'Medium', 'Low')
-        - 'snippet': Optional code snippet (defaults to empty if not provided)
+        - 'description': Description of the finding
+        - 'snippet': Code snippet
+        - 'level': Risk level from 0 (green) to 255 (red)
     :param output_md_path: Path to save the Markdown file
     """
     dirname = os.path.dirname(output_md_path)
     if dirname:
         os.makedirs(dirname, exist_ok=True)
-    
+
+    def level_to_rgb(level: int) -> str:
+        """Convert level (0-255) to RGB color string.
+        0 = green (0x00FF00), 255 = red (0xFF0000)
+        """
+        level = max(0, min(255, level))
+        r = level
+        g = 255 - level
+        b = 0
+        return f"#{r:02X}{g:02X}{b:02X}"
+
     with open(output_md_path, 'w', encoding='utf-8') as md_file:
         # Header
-        md_file.write('# Отчет о Потенциальных Утечках Секретов\n\n')
-        md_file.write('**Дата генерации:** ' + os.popen('date').read().strip() + '\n\n')
-    
-        risk_counts = {'High': 0, 'Medium': 0, 'Low': 0}
-        for finding in findings:
-            risk = finding.get('risk', 'Unknown')
-            if risk in risk_counts:
-                risk_counts[risk] += 1
-        
-        md_file.write('## Общая Статистика\n\n')
-        md_file.write(f'- **Общее количество находок:** {len(findings)}\n')
-        md_file.write(f'- **Высокий риск:** {risk_counts["High"]}\n')
-        md_file.write(f'- **Средний риск:** {risk_counts["Medium"]}\n')
-        md_file.write(f'- **Низкий риск:** {risk_counts["Low"]}\n\n')
-        
-        # Detailed Findings Table
-        md_file.write('## Детальный Отчет\n\n')
-        md_file.write('| Файл | Строка | Тип Секрета | Уровень Риска | Фрагмент Кода |\n')
-        md_file.write('|------|--------|-------------|---------------|---------------|\n')
-        
+        md_file.write('# Secret Leak Report\n\n')
+        md_file.write('**Generated:** ' + os.popen('date').read().strip() + '\n\n')
+
+        # Summary
+        total_findings = len(findings)
+        avg_level = sum(f.get('level', 0) for f in findings) / total_findings if total_findings > 0 else 0
+
+        md_file.write('## Summary\n\n')
+        md_file.write(f'- **Total findings:** {total_findings}\n')
+        md_file.write(f'- **Average risk level:** {avg_level:.1f}/255\n\n')
+
+        # Detailed Findings
+        md_file.write('## Findings\n\n')
+
         for finding in findings:
             file_path = finding.get('file', 'N/A')
             line_num = finding.get('line', 'N/A')
-            secret_type = finding.get('type', 'N/A')
-            risk_level = finding.get('risk', 'N/A')
+            description = finding.get('description', 'Potential secret detected')
             snippet = finding.get('snippet', '')
-            
-            if risk_level == 'High':
-                risk_colored = f'<span style="color: red; font-weight: bold;">{risk_level}</span>'
-            elif risk_level == 'Low':
-                risk_colored = f'<span style="color: lightgreen; font-weight: bold;">{risk_level}</span>'
-            else:
-                risk_colored = f'<span style="color: orange; font-weight: bold;">{risk_level}</span>'
-            
-            snippet_escaped = snippet.replace('|', '\\|') if snippet else 'N/A'
-            
-            md_file.write(f'| {file_path} | {line_num} | {secret_type} | {risk_colored} | `{snippet_escaped}` |\n')
-                
+            level = int(finding.get('level', 128))
+
+            color = level_to_rgb(level)
+
+            # Format: description with file and line, snippet highlighted with color
+            # Use div with inline background-color for PDF compatibility
+            md_file.write(f'{description} in `{file_path}` on line `{line_num}`:\n\n')
+            md_file.write(f'<div class="snippet-box" style="background-color: {color}; color: #000000;">{snippet}</div>\n\n')
+
         md_file.write('---\n')
-        md_file.write('*Сгенерировано автоматически. Для вопросов обращайтесь к разработчику.*\n')
+        md_file.write('*Generated automatically. Review findings and take appropriate action.*\n')
 
 if __name__ == '__main__':
     sample_findings = [
-        {'file': 'src/config.py', 'line': '42', 'type': 'API Key', 'risk': 'High', 'snippet': 'api_key = "sk-abc123"'},
-        {'file': 'scripts/deploy.sh', 'line': '15', 'type': 'Token', 'risk': 'Medium'},
-        {'file': 'README.md', 'line': '10', 'type': 'Base64 Data', 'risk': 'Low', 'snippet': 'encoded = "aGVsbG8gd29ybGQ="'}
+        {'file': 'src/config.py', 'line': '42', 'description': 'Hardcoded API key detected', 'snippet': 'api_key = "sk-abc123"', 'level': 255},
+        {'file': 'scripts/deploy.sh', 'line': '15', 'description': 'Token exposed in script', 'snippet': 'TOKEN="ghp_xxxxx"', 'level': 200},
+        {'file': 'README.md', 'line': '10', 'description': 'Base64 encoded data', 'snippet': 'encoded = "aGVsbG8gd29ybGQ="', 'level': 50}
     ]
     generate_report(sample_findings, 'report.md')
     generate_pdf_from_markdown('report.md', 'report.pdf')
