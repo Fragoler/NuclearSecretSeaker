@@ -4,6 +4,8 @@ import os
 from pathlib import Path
 import json
 
+DEFAULT_CONFIG_PATH = ".nuclearss"
+
 mail_regex = r'\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b'
 phone_regex = r'^((8|\+7)[\- ]?)?(\(?\d{3}\)?[\- ]?)?\d{3}[\- ]?\d{2}[\- ]?\d{2}$'
 ipv4_regex = r'\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b'
@@ -34,26 +36,67 @@ def print_help():
     """
     print(help_text)
 
-def find_regex(root_dir: str, ignore_list: list):
+def parse_config(config_path):
+    ignore_dir_list = []
+    ignore_file_list = []
+    ignore_matches = []
+    try:
+        with open(config_path, 'r', encoding='utf-8') as f:
+            for line_num, line in enumerate(f, 1):
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+                    
+                if line.startswith('dir:'):
+                    dir_path = line[4:].strip()
+                    if dir_path:
+                        ignore_dir_list.append(dir_path)
+                        
+                elif line.startswith('file:'):
+                    file_path = line[5:].strip()
+                    if file_path:
+                        ignore_file_list.append(file_path)
+                        
+                elif line.startswith('text:'):
+                    text = line[5:].strip()
+                    if text:
+                        ignore_matches.append(text)
+                        
+                else:
+                    print(f"Warning, unknown format in config on line {line_num}: {line}")
+                    
+    except FileNotFoundError:
+        if config_path == DEFAULT_CONFIG_PATH:
+            open(config_path, 'w').close()
+            print(f"Config file not found, default one was created at {DEFAULT_CONFIG_PATH}")
+        else:
+            print(f"Config file {config_path} not found. Try creating config on default path .nuclearss or specify it with -c (--config) option")
+    except Exception as e:
+        print(f"Unknown error {e}")
+    
+    return ignore_dir_list, ignore_file_list, ignore_matches
+
+def find_regex(root_dir: str = ".", ignore_dir_list: list = [], ignore_file_list: list = [], ignore_matches: list = []):
     compiled_patterns = [(re.compile(p, re.IGNORECASE), dict_pattern[p][0], dict_pattern[p][1]) for p in patterns]
     results = []
     
     for root, dirs, files in os.walk(root_dir):
-        dirs[:] = [d for d in dirs if os.path.join(root, d) not in ignore_list and d not in ignore_list]
+        dirs[:] = [d for d in dirs if os.path.join(root, d) not in ignore_dir_list and d not in ignore_dir_list]
         for file in files:
             file_path = Path(root) / file
             file_path_str = str(file_path)
-            if file_path_str in ignore_list or file in ignore_list:
+            if file_path_str in ignore_file_list or file in ignore_file_list:
                 continue
             try:
                 with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                     lines = f.readlines()
-                    
                     for line_num, line in enumerate(lines, 1):
                         for pattern, description, level in compiled_patterns:
                             matches = pattern.findall(line)
                             if matches:
                                 for match in set(matches):
+                                    if match in ignore_matches:
+                                        continue
                                     result = {
                                         "file": str(file_path_str),
                                         "line": str(line_num),
@@ -62,15 +105,15 @@ def find_regex(root_dir: str, ignore_list: list):
                                         "level": level
                                     }
                                     results.append(result)
-                                    
             except Exception as e:
-                pass
+                print(f"Could not read \"{file_path_str}\"")
     
     print(json.dumps(results, indent=4, ensure_ascii=False))
 
 def main():
     argc = len(sys.argv)
     root_dir = "."
+    config_path = DEFAULT_CONFIG_PATH
     ignore_list = []
     if argc == 1:
         pass
@@ -94,10 +137,17 @@ def main():
                 else:
                     print("DIR or FILE expected after -x (--ignore) option")
                     return
+            elif sys.argv[i] in ['-c', '--config']:
+                if i + 1 < argc:
+                    config_path = sys.argv[i + 1]
+                    i += 2
+                else:
+                    print("FILE expected after -c (--config) option")
             else:
                 print(f"Unknown option: {sys.argv[i]}")
                 return
-    find_regex(root_dir, ignore_list)
+    dirs, files, matches = parse_config(config_path)
+    find_regex(root_dir, dirs, files, matches)
     
 
 if __name__ == '__main__':
