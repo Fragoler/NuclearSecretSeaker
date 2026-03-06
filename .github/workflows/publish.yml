@@ -61,7 +61,7 @@ jobs:
         id: extract_version
         run: |
           VERSION=${GITHUB_REF#refs/tags/v}
-          echo "::set-output name=version::$VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Create .deb package
         run: |
