@@ -9,6 +9,6 @@ fi
 
 tmpfile=$(mktemp)
 echo "$output" > "$tmpfile"
-./dist/main --file "$tmpfile"
+./dist/main -t --file "$tmpfile"
 
 exit 0
