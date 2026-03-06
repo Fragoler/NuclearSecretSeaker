@@ -2,7 +2,8 @@ import os
 from typing import List, Dict
 from markdown_pdf import MarkdownPdf, Section
 import fitz  # PyMuPDF
-
+import json
+import sys
 
 def generate_pdf_from_markdown(
     input_md_path: str,
@@ -224,12 +225,48 @@ def generate_report(findings: List[Dict[str, str]], output_md_path: str = 'repor
         md_file.write('---\n')
         md_file.write('*Generated automatically. Review findings and take appropriate action.*\n')
 
-if __name__ == '__main__':
-    sample_findings = [
-        {'file': 'src/config.py', 'line': '42', 'description': 'Hardcoded API key detected', 'snippet': 'api_key = "sk-abc123"', 'level': 255},
-        {'file': 'scripts/deploy.sh', 'line': '15', 'description': 'Token exposed in script', 'snippet': 'TOKEN="ghp_xxxxx"', 'level': 200},
-        {'file': 'README.md', 'line': '10', 'description': 'Base64 encoded data', 'snippet': 'encoded = "aGVsbG8gd29ybGQ="', 'level': 50}
+def parse_json() -> List[Dict[str, str]]:
+    """
+    Parses JSON from stdin and returns a list of findings.
+
+    Expected JSON format:
+    [
+        {
+            "file": "path/to/file",
+            "line": "42",
+            "description": "Description of finding",
+            "snippet": "code snippet",
+            "level": 255
+        },
+        ...
     ]
-    generate_report(sample_findings, 'report.md')
+
+    :return: List of finding dictionaries
+    """
+    try:
+        data = json.load(sys.stdin)
+        if not isinstance(data, list):
+            raise ValueError("JSON must be a list of findings")
+
+        # Validate and normalize each finding
+        for finding in data:
+            if not isinstance(finding, dict):
+                raise ValueError("Each finding must be a dictionary")
+            finding.setdefault('file', 'N/A')
+            finding.setdefault('line', 'N/A')
+            finding.setdefault('description', 'Potential secret detected')
+            finding.setdefault('snippet', '')
+            finding.setdefault('level', 128)
+
+        return data
+    except json.JSONDecodeError as e:
+        print(f"Invalid JSON input: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+if __name__ == '__main__':
+    findings = parse_json()
+
+    generate_report(findings, 'report.md')
     generate_pdf_from_markdown('report.md', 'report.pdf')
-    print("Markdown report generated at 'report.md'")
+    print("Report generated: report.md, report.pdf", file=sys.stderr)
