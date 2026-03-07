@@ -19,33 +19,44 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.14'
+          python-version: '3.12'
 
       - name: Install PyInstaller
         run: |
           python -m pip install --upgrade pip
           pip install pyinstaller
 
-      - name: Build pdf-generator/main.py
+      - name: Build pdf-generator
         run: |
-          pyinstaller --onefile --add-data "pdf-generator/background.png:." --distpath dist/pdf-generator pdf-generator/main.py 
+          pyinstaller --onefile \
+                      --add-data "pdf-generator/background.png:." \
+                      --distpath dist/nuclearss-pdf \
+                      --name nuclearss-pdf \
+                      pdf-generator/main.py 
      
-      - name: Build seaker/main.py
+      - name: Build seaker
         run: |
-          pyinstaller --onefile --add-data "seaker/patterns.json:." --distpath dist/seaker seaker/main.py
-
-      - name: Build tui/src/main.py
+          pyinstaller --onefile \
+                      --add-data "seaker/patterns.json:." \
+                      --distpath dist/nuclearss-seaker \
+                      --name nuclearss-seaker \
+                      seaker/src/main.py
+          
+      - name: Build tui
         run: |
-          pyinstaller --onefile --distpath dist/tui tui/src/main.py
+          pyinstaller --onefile \
+                      --distpath dist/nuclearss \
+                      --name nuclearss \
+                      tui/src/main.py
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
         with:
           name: python-artifacts
           path: |
-            dist/pdf-generator/main
-            dist/seaker/main
-            dist/tui/main
+            dist/nuclearss-pdf
+            dist/nuclearss-seaker
+            dist/nuclearss
 
   publish:
     runs-on: ubuntu-latest
@@ -72,9 +83,9 @@ jobs:
       - name: Create .deb package
         run: |
           mkdir -p package/usr/local/bin
-          cp dist/pdf-generator/main package/usr/local/bin/nuclearss-pdf
-          cp dist/seaker/main package/usr/local/bin/nuclearss-seaker
-          cp dist/tui/main package/usr/local/bin/nuclearss
+          cp dist/nuclearss-pdf    package/usr/local/bin/nuclearss-pdf
+          cp dist/nuclearss-seaker package/usr/local/bin/nuclearss-seaker
+          cp dist/nuclearss        package/usr/local/bin/nuclearss
 
           chmod 755 package/usr/local/bin/nuclearss*
 
