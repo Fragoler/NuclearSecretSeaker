@@ -3,8 +3,7 @@
 import os
 import sys
 
-DEFAULT_CFG = '''
-dir: .git
+DEFAULT_CFG = '''dir: .git
 dir: .idea
 dir: .venv
 dir: node_modules'''
