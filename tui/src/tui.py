@@ -146,7 +146,7 @@ def tui(data: list[dict], ignored: dict, config_file: str) -> int:
     print(_div("═"))
     print()
 
-    return 0
+    return skipped > 0
 
 
 def add_to_ignore(file_path):
