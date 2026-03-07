@@ -50,7 +50,7 @@ def tui(data, config_file):
                 print("  ? - Show this help message")
                 print("  N or [Enter] - Do not ignore and interrupt the process")
             else:
-                return 1
+                return 0
 
     return 0
 
