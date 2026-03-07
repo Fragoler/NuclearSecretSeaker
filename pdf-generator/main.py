@@ -478,19 +478,23 @@ def generate_html_report(
             border-radius: 0.5em;
             margin-top: 1em;
         }}
-        
+
         .ignored ul {{
             list-style: none;
             margin: 0.5em 0 1em 0;
         }}
-        
+
         .ignored li {{
             display: inline-block;
             margin: 0.2em 0.5em 0.2em 0;
+            max-width: 100%;
+            word-break: break-all;
         }}
-        
+
         .ignored li code {{
             background: #fff;
+            word-break: break-all;
+            overflow-wrap: break-word;
         }}
     </style>
 </head>
