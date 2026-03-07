@@ -10,10 +10,19 @@ PATTERNS_FILE = Path(__file__).parent / "patterns.json"
 DEFAULT_CONFIG_PATH = ".nuclearss"
 DEFAULT_ROOT_DIR = "."
 
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
+
 def load_patterns_from_json(json_path):
     dict_pattern = {}
     
-    with open(json_path, 'r', encoding='utf-8') as f:
+    with open(resource_path(json_path), 'r', encoding='utf-8') as f:
         data = json.load(f)
     
     for entry in data.get('patterns', []):
