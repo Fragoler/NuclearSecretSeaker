@@ -8,9 +8,9 @@ def ignore_path(path, config_path):
         raise FileNotFoundError(f"Invalid path: {path}")
 
     if os.path.isfile(path):
-        entry = f"file: {str(Path(path).resolve())}\n"
+        entry = f"\nfile: {str(Path(path).resolve())}"
     elif os.path.isdir(path):
-        entry = f"dir: {str(Path(path).resolve())}\n"
+        entry = f"\ndir: {str(Path(path).resolve())}"
     else:
         raise ValueError(f"Unknown path type: {path}")
 
