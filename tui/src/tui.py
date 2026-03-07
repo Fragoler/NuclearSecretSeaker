@@ -1,74 +1,153 @@
 ﻿from ignore import ignore_text, ignore_file
 
+# ── ANSI helpers ────────────────────────────────────────────────────────────
 
-def get_color(level):
-    intensity = level / 255.0
+RESET  = "\033[0m"
+BOLD   = "\033[1m"
+DIM    = "\033[2m"
 
-    if intensity < 0.33:
-        r, g, b = 0, int(255 * (1 - intensity * 3)), 0
-    elif intensity < 0.66:
-        r, g, b = int(255 * ((intensity - 0.33) * 3)), int(255 * (1 - (intensity - 0.33) * 3)), 0
+RED    = "\033[38;2;220;50;50m"
+YELLOW = "\033[38;2;230;180;0m"
+GREEN  = "\033[38;2;60;200;80m"
+CYAN   = "\033[38;2;80;200;220m"
+GRAY   = "\033[38;2;140;140;140m"
+WHITE  = "\033[38;2;220;220;220m"
+
+
+def _rgb(r, g, b):
+    return f"\033[38;2;{r};{g};{b}m"
+
+
+def _level_color(level: int) -> str:
+    t = level / 255.0
+    if t < 0.5:
+        r, g = int(255 * t * 2), 200
     else:
-        r, g, b = 255, 0, int(255 * (1 - (intensity - 0.66) * 3))
+        r, g = 255, int(200 * (1 - (t - 0.5) * 2))
+    return _rgb(r, g, 0)
 
-    return f"\033[38;2;{int(r)};{int(g)};{int(b)}m"
+
+def _level_label(level: int) -> str:
+    if level < 85:
+        return f"{GREEN}LOW{RESET}"
+    elif level < 170:
+        return f"{YELLOW}MEDIUM{RESET}"
+    else:
+        return f"{RED}HIGH{RESET}"
+
+
+def _bar(level: int, lc: str, width: int = 18) -> str:
+    filled = level * width // 255
+    empty  = width - filled
+    return f"{lc}{'█' * filled}{GRAY}{'░' * empty}{RESET}"
+
+
+def _div(char="─", color=GRAY):
+    return f"{color}{char * 60}{RESET}"
+
+
+# ── Main TUI ────────────────────────────────────────────────────────────────
 
 def tui(data: list[dict], ignored: dict, config_file: str) -> int:
-    for item in data:
-        file_path = item.get("file")
-        description = item.get("description")
-        snippet = item.get("snippet")
-        secret = item.get("secret")
-        level = item.get("level")
+    total   = len(data)
+    skipped = 0
+
+    for idx, item in enumerate(data, 1):
+        file_path   = item.get("file", "")
+        description = item.get("description", "")
+        snippet     = item.get("snippet", "")
+        secret      = item.get("secret", "")
+        level       = item.get("level", 0)
 
         if not file_path or not description or level is None:
             continue
 
-        color = get_color(level)
-        reset = "\033[0m"
-        colored_secret = f"{color}\"{secret}\"{reset}"
+        lc    = _level_color(level)
+        label = _level_label(level)
 
-        print(f"\n{'='*60}")
-        print(f"Potential secret detected! In {file_path}:")
-        print(f"  File: {file_path}") 
-        print(f"  Type: {description}")
-        print(f"  Text: \n{'-'*20}\n{snippet}\n{'-'*20}")
+        # ── Header ──────────────────────────────────────────────────────────
+        print()
+        print(_div("─"))
+        print(f"  {BOLD}{WHITE}Secret detected{RESET}  {GRAY}[{idx}/{total}]{RESET}")
+        print(_div("─"))
+        print(f"  {CYAN}File :{RESET} {file_path}")
+        print(f"  {CYAN}Type :{RESET} {description}")
+        print(f"  {CYAN}Risk :{RESET} {label}  {_bar(level, lc)}")
+        print(_div("·"))
+
+        # ── Snippet ─────────────────────────────────────────────────────────
+        for line in snippet.splitlines():
+            highlighted = line.replace(secret, f"{lc}{BOLD}{secret}{RESET}")
+            print(f"  {DIM}{highlighted}{RESET}")
+
+        print(_div("·"))
+
+        # ── Prompt ──────────────────────────────────────────────────────────
+        colored_secret = f"{lc}\"{secret}\"{RESET}"
+        print(f"  Ignore {colored_secret}?")
+        print(f"  {GREEN}[y]{RESET} this secret  "
+              f"{YELLOW}[f]{RESET} whole file  "
+              f"{RED}[N]{RESET} block commit  "
+              f"{GRAY}[?]{RESET} help")
+        print()
+
         while True:
-            print(f"\nDo you want to ignore \"{colored_secret}\" issue? [y/N/f/?]: ", end="")
+            print(f"  {GRAY}›{RESET} ", end="", flush=True)
             action = input("").strip().lower()
+
             if action == "y":
                 ignore_text(secret, config_file)
+                print(f"  {GREEN}✔{RESET}  Secret added to ignore list.\n")
                 break
+
             elif action == "f":
                 ignore_file(file_path, config_file, force=True)
+                print(f"  {YELLOW}✔{RESET}  File added to ignore list.\n")
                 break
+
             elif action == "?":
-                print("\nOptions:")
-                print("  y - Ignore this specific secret")
-                print("  f - Ignore all file")
-                print("  ? - Show this help message")
-                print("  N or [Enter] - Do not ignore and interrupt the process")
+                print(f"\n  {BOLD}Options:{RESET}")
+                print(f"    {GREEN}y{RESET}         — ignore this specific secret value")
+                print(f"    {YELLOW}f{RESET}         — ignore the entire file")
+                print(f"    {RED}N{RESET} / Enter — block the commit and exit")
+                print(f"    {GRAY}?{RESET}         — show this help\n")
+
             else:
+                skipped += 1
                 return 1
 
-    ignored_dirs =  ignored['directories']
-    ignored_files = ignored['files'] 
-    ignored_text = ignored['texts'] 
-    
-    print('\n' + '='*60) 
-    print("Ignored items:")
-    print("-- Directories:") 
-    for dir in ignored_dirs:
-        print(f"  : {dir}")
-    print("-- Files:")
-    for file in ignored_files:
-        print(f"  : {file}")
-    print("--  Texts:")  
-    for text in ignored_text:
-        print(f"  : {text}")
+    # ── Summary ─────────────────────────────────────────────────────────────
+    ignored_dirs  = ignored.get('directories', [])
+    ignored_files = ignored.get('files', [])
+    ignored_texts = ignored.get('texts', [])
+
+    print()
+    print(_div("═"))
+    print(f"  {BOLD}{WHITE}Scan complete{RESET}")
+    print(_div("─"))
+    print(f"  {CYAN}Findings   :{RESET}  {total}")
+    print(f"  {GREEN}Ignored    :{RESET}  {total - skipped}")
+    if skipped:
+        print(f"  {RED}Unresolved :{RESET}  {skipped}")
+
+    def _list_section(title, items):
+        print()
+        print(f"  {BOLD}{title}{RESET}")
+        if items:
+            for entry in items:
+                print(f"    {GRAY}·{RESET} {entry}")
+        else:
+            print(f"    {DIM}(none){RESET}")
+
+    _list_section("Ignored directories:", ignored_dirs)
+    _list_section("Ignored files:",       ignored_files)
+    _list_section("Ignored secrets:",     ignored_texts)
+    print()
+    print(_div("═"))
+    print()
 
     return 0
 
 
 def add_to_ignore(file_path):
-    pass # Placeholder
+    pass  # Placeholder
