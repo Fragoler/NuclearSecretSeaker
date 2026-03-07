@@ -75,7 +75,7 @@ def generate_html_report(
     # Encode background image as base64 if it exists
     bg_image_data = ""
     if background_image_path and os.path.exists(resource_path(background_image_path)):
-        with open(background_image_path, 'rb') as img_file:
+        with open(resource_path(background_image_path), 'rb') as img_file:
             img_data = base64.b64encode(img_file.read()).decode('utf-8')
             bg_image_data = f"data:image/jpeg;base64,{img_data}"
 
