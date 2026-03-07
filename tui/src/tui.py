@@ -36,7 +36,8 @@ def tui(data, config_file):
         print(f"  Type: {description}")
         print(f"  Text: \n{'-'*20}\n{snippet}\n{'-'*20}")
         while True:
-            action = input(f"\nDo you want to ignore \"{colored_secret}\" issue? [y/N/f/?]: ").strip().lower()
+            print(f"\nDo you want to ignore \"{colored_secret}\" issue? [y/N/f/?]: ", end="")
+            action = input("").strip().lower()
             if action == "y":
                 ignore_text(secret, config_file)
                 break
@@ -50,7 +51,7 @@ def tui(data, config_file):
                 print("  ? - Show this help message")
                 print("  N or [Enter] - Do not ignore and interrupt the process")
             else:
-                return 0
+                return 1
 
     return 0
 
