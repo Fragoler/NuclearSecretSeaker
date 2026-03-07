@@ -77,7 +77,8 @@ def main():
         print("Invalid JSON input.")
         sys.exit(1)
         
-    tui(data, config_file)
+    code = tui(data, config_file)
+    sys.exit(code)
 
 if __name__ == "__main__":
     main()

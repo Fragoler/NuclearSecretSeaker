@@ -1,9 +1,0 @@
-#!/usr/bin/env sh
-
-cat <<'EOF'
-[
-  {"file": "src/config.py", "line": "42", "description": "Hardcoded API key detected", "snippet": "api_key = \"sk-abc123\"", "level": 255},
-  {"file": "scripts/deploy.sh", "line": "15", "description": "Token exposed in script", "snippet": "TOKEN=\"ghp_xxxxx\"", "level": 200},
-  {"file": "README.md", "line": "10", "description": "Base64 encoded data", "snippet": "encoded = \"aGVsbG8gd29ybGQ=\"", "level": 50}
-]
-EOF
