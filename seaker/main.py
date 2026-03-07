@@ -160,6 +160,7 @@ def find_regex(root_dir: str = DEFAULT_ROOT_DIR, ignore_dir_list: list = [], ign
                                     results.append(result)
 
             except Exception as e:
+                print(f"Could not read \"{file_path_str}\"")
                 pass
 
     results = deduplicate_results(results)
