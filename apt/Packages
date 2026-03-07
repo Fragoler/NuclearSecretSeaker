@@ -1,12 +1,12 @@
 Package: nuclearss
-Version: 1.1.1
+Version: 1.1.2
 Architecture: amd64
 Maintainer: Fragoler <e.f.oleg@mail.com>
 Filename: ./nuclearss.deb
-Size: 58864268
-MD5sum: 1e9df74c2b8347de871c064175aa0acf
-SHA1: 1ddee303b51938ee4cddfd795802bbb68251a452
-SHA256: 121956d80df7bde09bf0524690e30e5bbb17beeb9f0cf564654eaa9616fba3bd
+Size: 58863134
+MD5sum: f38bafdc856d6d33d48e6a91d6b63f6b
+SHA1: c16653b096ae726c21050afd6ead39bf10ccc276
+SHA256: 44c33cee1ac56bdb762e17597a8bb6e05798a51faa8338a94e01e5e3d3296f97
 Section: base
 Priority: optional
 Description: nuclearss - a util for protection git repo from leaking secrets
