@@ -44,7 +44,7 @@ def find_regex(root_dir: str, dict_pattern=None, suppressed_dirs: list = None,
 
     patterns = list(dict_pattern.keys())
     compiled_patterns = [
-        (re.compile(p, re.IGNORECASE), dict_pattern[p][0], dict_pattern[p][1])
+        (re.compile(p, re.IGNORECASE), dict_pattern[p][0], dict_pattern[p][1], dict_pattern[p][2])
         for p in patterns
     ]
     compiled_patterns.sort(key=lambda x: x[2], reverse=True)
@@ -80,7 +80,7 @@ def find_regex(root_dir: str, dict_pattern=None, suppressed_dirs: list = None,
                     for line_num, line in enumerate(lines, 1):
                         # Step 1: Collect ALL matches from ALL patterns with positions
                         all_matches = []
-                        for idx, (pattern, description, level) in enumerate(compiled_patterns):
+                        for idx, (pattern, description, level, recommendation) in enumerate(compiled_patterns):
                             matches = find_all_matches_with_positions(line, pattern)
                             for m in matches:
                                 all_matches.append({
@@ -89,7 +89,8 @@ def find_regex(root_dir: str, dict_pattern=None, suppressed_dirs: list = None,
                                     'description': description,
                                     'text': m['text'],
                                     'start': m['start'],
-                                    'end': m['end']
+                                    'end': m['end'],
+                                    'recommendation': recommendation
                                 })
 
                         # Step 2: Mark matches that are directly ignored
@@ -137,7 +138,8 @@ def find_regex(root_dir: str, dict_pattern=None, suppressed_dirs: list = None,
                                     'description': m['description'],
                                     'snippet': get_snippet_with_context(line, m['text']),
                                     'secret': m['text'],
-                                    'level': m['level']
+                                    'level': m['level'],
+                                    'recommendation': m['recommendation']
                                 })
 
             except Exception as e:
