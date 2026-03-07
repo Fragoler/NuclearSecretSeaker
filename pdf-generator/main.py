@@ -81,7 +81,7 @@ def generate_html_report(
 
     # Calculate summary
     total_findings = len(findings)
-    avg_level = sum(f.get('level', 0) for f in findings) / total_findings if total_findings > 0 else 0
+    avg_level = (sum(f.get('level', 0) for f in findings) / total_findings)*100/255 if total_findings > 0 else 0
 
     # Build findings HTML
     findings_html = ""
@@ -235,7 +235,7 @@ def generate_html_report(
     <div class="summary">
         <ul>
             <li><strong>Total findings:</strong> {total_findings}</li>
-            <li><strong>Average risk level:</strong> {avg_level:.1f}/255</li>
+            <li><strong>Average risk level:</strong> {avg_level:.1f}/100</li>
         </ul>
     </div>
     
