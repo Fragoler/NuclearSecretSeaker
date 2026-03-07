@@ -15,11 +15,11 @@ def main():
 
     parser.add_argument("command", nargs="?", choices=["report", "tui", "install", "ignore"], help="Command: report, tui, ignore <path>, or install <path>")
     parser.add_argument("path", nargs="?")
-    
     parser.add_argument("-c", "--config", type=str, help=f"Specify config file (default: {DEFAULT_CFG_PATH})")
     
     args = parser.parse_args()
-
+    
+    path = args.path if args.path else "."
     config_file = args.config if args.config else DEFAULT_CFG_PATH
 
     if args.command == "ignore":
@@ -37,7 +37,7 @@ def main():
     str_data = ""
     if args.command != "tui":
         result = subprocess.run(
-            ["nuclearss-seaker", "-c", f"{config_file}"],
+            ["nuclearss-seaker", "-c", f"{config_file}", "-d", f"{path}"],
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
             text=True

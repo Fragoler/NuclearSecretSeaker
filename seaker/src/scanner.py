@@ -33,6 +33,14 @@ def find_regex(root_dir: str, dict_pattern=None, suppressed_dirs: list = None,
     suppressed_files = [os.path.join(root_dir, f) for f in suppressed_files]
     ignored_files = [os.path.join(root_dir, f) for f in ignored_files]
 
+    log('\n' + "=" * 20, LogLevel.VERBOSE)
+    log(f"root dir: {root_dir}", LogLevel.VERBOSE)
+    log(f"suppressed dirs:    {suppressed_dirs}",    LogLevel.VERBOSE)
+    log(f"suppressed files:   {suppressed_files}",   LogLevel.VERBOSE)
+    log(f"suppressed_matches: {suppressed_matches}", LogLevel.VERBOSE)
+    log(f"ignored files:      {ignored_files}",      LogLevel.VERBOSE)
+
+
     patterns = list(dict_pattern.keys())
 
     compiled_patterns = [
@@ -44,6 +52,11 @@ def find_regex(root_dir: str, dict_pattern=None, suppressed_dirs: list = None,
     results = []
 
     for root, dirs, files in os.walk(root_dir):
+        log("-" * 20, LogLevel.VERBOSE)
+        log(f"root:  {root}",  LogLevel.VERBOSE)
+        log(f"dirs:  {dirs}",  LogLevel.VERBOSE)
+        log(f"files: {files}", LogLevel.VERBOSE)
+        
         dirs[:] = [d for d in dirs if os.path.join(root, d) not in suppressed_dirs and d not in suppressed_dirs]
         files = [f for f in files if str(Path(root) / f) not in ignored_files and f not in ignored_files]
         
@@ -122,6 +135,8 @@ def find_regex(root_dir: str, dict_pattern=None, suppressed_dirs: list = None,
             except Exception as e:
                 log(f'Could not read "{file_path_str}"', LogLevel.ERROR)
                 pass
+
+    log("=" * 20 + '\n', LogLevel.VERBOSE)
 
     results = deduplicate_results(results)
 
