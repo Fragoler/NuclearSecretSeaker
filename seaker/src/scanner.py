@@ -28,6 +28,10 @@ def find_regex(root_dir: str, dict_pattern=None, suppressed_dirs: list = None,
     suppressed_files   = [] if suppressed_files   is None else suppressed_files
     suppressed_matches = [] if suppressed_matches is None else suppressed_matches
     ignored_files      = [] if ignored_files      is None else ignored_files
+    
+    suppressed_dirs = [os.path.join(root_dir, d) for d in suppressed_dirs]
+    suppressed_files = [os.path.join(root_dir, f) for f in suppressed_files]
+    ignored_files = [os.path.join(root_dir, f) for f in ignored_files]
 
     patterns = list(dict_pattern.keys())
 
