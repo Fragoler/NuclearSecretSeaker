@@ -37,7 +37,7 @@ nuclearss check /path    # Run default check /path directory
 nuclearss report /path   # Generate PDF report for path
 nuclearss tui data.json  # Launch TUI with JSON file
 nuclearss install /path  # Install git hooks for selected repository
-nuclearss install              # Install git hooks for current repository
+nuclearss install        # Install git hooks for current repository
 nuclearss ignore /path   # Ignore all secrets in the specified path
 ```
 
