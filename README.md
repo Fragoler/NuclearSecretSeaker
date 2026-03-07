@@ -1,36 +1,26 @@
 # NuclearSecretSeaker
 
-### NuclearSS: The Utility that protects the git repository from leaks of tokens, passwords, secrets, and other confidential information.
+ NuclearSS: The Utility that protects the git repository from leaks of tokens, passwords, secrets, and other confidential information.
 
-#### How to build:
+### How to build:
 
-if using **apt**
+if using **apt** - see the [apt-repo-install.sh](scripts/apt-repo-install.sh).
+
+One cmd installation:
 ```
 curl -fsSL https://raw.githubusercontent.com/Fragoler/NuclearSecretSeaker/refs/heads/main/apt-repo-install.sh | sudo bash
 ```
 
 
-if **not** using apt then via script
-```
-#!/bin/bash
+if **not** using apt then via script - see the [build.sh](scripts/build.sh).
 
-pyinstaller --onefile \
-            --add-data "pdf-generator/background.png:." \
-            --name nuclearss-pdf \
-            pdf-generator/main.py
-            
-pyinstaller --onefile \
-            --add-data "seaker/patterns.json:." \
-            --name nuclearss-seaker \
-            seaker/src/main.py
-            
-pyinstaller --onefile \
-            --name nuclearss \
-            tui/src/main.py
+One cmd installation:
+```
+curl -fsSL https://raw.githubusercontent.com/Fragoler/NuclearSecretSeaker/refs/heads/main/build.sh | sudo bash
 ```
 
 
-#### How to use:
+### How to use:
 
 ```
 nuclearss check /path    # Run default check /path directory
