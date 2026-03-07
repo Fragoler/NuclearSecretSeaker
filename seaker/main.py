@@ -3,12 +3,26 @@ import re
 import os
 from pathlib import Path
 import json
-
+from enum import Enum
 
 PATTERNS_FILE = Path(__file__).parent / "patterns.json"
 
 DEFAULT_CONFIG_PATH = ".nuclearss"
 DEFAULT_ROOT_DIR = "."
+
+class LOG_LEVEL(Enum):
+    VERBOSE = 1
+    ERROR = 2
+    QUIET = 3
+
+LOG_LEVEL = LOG_LEVEL.QUIET
+
+def log(msg: str, level: LOG_LEVEL):
+    if level.value < LOG_LEVEL.value: return
+    match level:
+        case LOG_LEVEL.VERBOSE: print(msg)
+        case LOG_LEVEL.ERROR: print(msg, file=sys.stderr) 
+        case LOG_LEVEL.QUIET: print(msg)
 
 def resource_path(relative_path):
     """ Get absolute path to resource, works for dev and for PyInstaller """
@@ -89,11 +103,11 @@ def print_help():
           -x FILE, --ignore FILE   Ignore file
           -x FILE1 -x FILE2 -x DIR The way to ignore multiple dirs/files
     """
-    print(help_text)
+    log(help_text, QUIET)
 
 def parse_config(config_path):
     ignore_dir_list = []
-    ignore_file_list = [DEFAULT_CONFIG_PATH]
+    ignore_file_list = [config_path]
     ignore_matches = []
     try:
         with open(config_path, 'r', encoding='utf-8') as f:
@@ -118,12 +132,12 @@ def parse_config(config_path):
                         ignore_matches.append(text)
                         
                 else:
-                    print(f"Warning, unknown format in config on line {line_num}: {line}")
+                    log(f"Warning, unknown format in config on line {line_num}: {line}", LOG_LEVEL.ERROR)
                     
     except FileNotFoundError:
         open(config_path, 'w').close()
     except Exception as e:
-        print(f"Unknown error {e}")
+        log(f"Unknown error {e}", LOG_LEVEL.ERROR)
     
     return ignore_dir_list, ignore_file_list, ignore_matches
 
@@ -224,14 +238,14 @@ def find_regex(root_dir: str = DEFAULT_ROOT_DIR, ignore_dir_list: list = [], ign
                                 })
 
             except Exception as e:
-                print(f"Could not read \"{file_path_str}\"")
+                log(f"Could not read \"{file_path_str}\"", LOG_LEVEL.ERROR)
                 pass
 
     results = deduplicate_results(results)
 
     results.sort(key=lambda x: (-x["level"], x["file"], int(x["line"])))
 
-    print(json.dumps(results, indent=4, ensure_ascii=False))
+    log(json.dumps(results, indent=4, ensure_ascii=False), LOG_LEVEL.QUIET)
     
 def main():
     argc = len(sys.argv)
@@ -251,23 +265,23 @@ def main():
                     root_dir = sys.argv[i + 1]
                     i += 2
                 else:
-                    print("DIR expected after -i (--input) option)")
+                    log("DIR expected after -i (--input) option)", LOG_LEVEL.ERROR)
                     return
             elif sys.argv[i] in ['-x', '--ignore']:
                 if i + 1 < argc:
                     ignore_list.append(sys.argv[i + 1])
                     i += 2
                 else:
-                    print("DIR or FILE expected after -x (--ignore) option")
+                    log("DIR or FILE expected after -x (--ignore) option", LOG_LEVEL.ERROR)
                     return
             elif sys.argv[i] in ['-c', '--config']:
                 if i + 1 < argc:
                     config_path = sys.argv[i + 1]
                     i += 2
                 else:
-                    print("FILE expected after -c (--config) option")
+                    log("FILE expected after -c (--config) option", LOG_LEVEL.ERROR)
             else:
-                print(f"Unknown option: {sys.argv[i]}")
+                log(f"Unknown option: {sys.argv[i]}", LOG_LEVEL.ERROR)
                 return
     dirs, files, matches = parse_config(config_path)
     find_regex(root_dir, dirs, files, matches)
