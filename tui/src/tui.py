@@ -1,4 +1,5 @@
-﻿from ignore import ignore_text, ignore_path
+﻿from ignore import ignore_text, ignore_file
+
 
 def get_color(level):
     intensity = level / 255.0
@@ -12,7 +13,7 @@ def get_color(level):
 
     return f"\033[38;2;{int(r)};{int(g)};{int(b)}m"
 
-def tui(data, config_file):
+def tui(data: list[dict], ignored: dict, config_file: str) -> int:
     for item in data:
         file_path = item.get("file")
         description = item.get("description")
@@ -39,7 +40,7 @@ def tui(data, config_file):
                 ignore_text(secret, config_file)
                 break
             elif action == "f":
-                ignore_path(file_path, config_file)
+                ignore_file(file_path, config_file, force=True)
                 break
             elif action == "?":
                 print("\nOptions:")
@@ -49,6 +50,22 @@ def tui(data, config_file):
                 print("  N or [Enter] - Do not ignore and interrupt the process")
             else:
                 return 1
+
+    ignored_dirs =  ignored['directories']
+    ignored_files = ignored['files'] 
+    ignored_text = ignored['texts'] 
+    
+    print('\n' + '='*60) 
+    print("Ignored items:")
+    print("-- Directories:") 
+    for dir in ignored_dirs:
+        print(f"  : {dir}")
+    print("-- Files:")
+    for file in ignored_files:
+        print(f"  : {file}")
+    print("--  Texts:")  
+    for text in ignored_text:
+        print(f"  : {text}")
 
     return 0
 
