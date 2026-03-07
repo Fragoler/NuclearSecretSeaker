@@ -1,4 +1,4 @@
-﻿#!/bin/bash
+#!/bin/bash
 
 pyinstaller --onefile \
             --add-data "pdf-generator/background.png:." \
