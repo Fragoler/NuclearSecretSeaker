@@ -131,13 +131,26 @@ def parse_config(config_path):
     
     return ignore_dir_list, ignore_file_list, ignore_matches
 
+
+def find_all_matches_with_positions(line, pattern):
+    """Find all matches with their start/end positions in the line."""
+    matches_with_pos = []
+    for match in pattern.finditer(line):
+        matches_with_pos.append({
+            'text': match.group(0),
+            'start': match.start(),
+            'end': match.end()
+        })
+    return matches_with_pos
+
+
 def find_regex(root_dir: str = DEFAULT_ROOT_DIR, ignore_dir_list: list = [], ignore_file_list: list = [], ignore_matches: list = []):
     compiled_patterns = [
         (re.compile(p, re.IGNORECASE), dict_pattern[p][0], dict_pattern[p][1])
         for p in patterns
     ]
     compiled_patterns.sort(key=lambda x: x[2], reverse=True)
-    
+
     results = []
 
     for root, dirs, files in os.walk(root_dir):
@@ -152,28 +165,74 @@ def find_regex(root_dir: str = DEFAULT_ROOT_DIR, ignore_dir_list: list = [], ign
                     lines = f.readlines()
 
                     for line_num, line in enumerate(lines, 1):
-                        for pattern, description, level in compiled_patterns:
-                            matches = pattern.findall(line)
-                            if matches:
-                                for match in set(matches):
-                                    if match in ignore_matches: continue
-                                    snippet = get_snippet_with_context(line, match)
-                                    result = {
-                                        "file": str(file_path),
-                                        "line": str(line_num),
-                                        "description": description,
-                                        "snippet": snippet,
-                                        "secret": match,
-                                        "level": level
-                                    }
-                                    results.append(result)
+                        # Step 1: Collect ALL matches from ALL patterns with positions
+                        all_matches = []
+                        for idx, (pattern, description, level) in enumerate(compiled_patterns):
+                            matches = find_all_matches_with_positions(line, pattern)
+                            for m in matches:
+                                all_matches.append({
+                                    'priority_idx': idx,
+                                    'level': level,
+                                    'description': description,
+                                    'text': m['text'],
+                                    'start': m['start'],
+                                    'end': m['end']
+                                })
+
+                        # Step 2: Mark matches that are directly ignored
+                        for m in all_matches:
+                            m['is_ignored'] = m['text'] in ignore_matches
+
+                        # Step 3: For each match, determine if it should be shown
+                        for current in all_matches:
+                            if current['is_ignored']:
+                                current['show'] = False
+                                continue
+
+                            should_show = True
+
+                            # Check against all other matches
+                            for other in all_matches:
+                                if other is current:
+                                    continue
+
+                                # If other is higher priority (lower idx)
+                                if other['priority_idx'] < current['priority_idx']:
+                                    # If other is NOT ignored and contains current, hide current
+                                    if not other['is_ignored'] and \
+                                       other['start'] <= current['start'] and \
+                                       other['end'] >= current['end']:
+                                        should_show = False
+                                        break
+
+                                    # If other IS ignored and current contains other, hide current
+                                    # (e.g., Bearer contains ignored JWT)
+                                    if other['is_ignored'] and \
+                                       current['start'] <= other['start'] and \
+                                       current['end'] >= other['end']:
+                                        should_show = False
+                                        break
+
+                            current['show'] = should_show
+
+                        # Step 4: Collect results for matches that should be shown
+                        for m in all_matches:
+                            if m['show']:
+                                results.append({
+                                    'file': str(file_path),
+                                    'line': str(line_num),
+                                    'description': m['description'],
+                                    'snippet': get_snippet_with_context(line, m['text']),
+                                    'secret': m['text'],
+                                    'level': m['level']
+                                })
 
             except Exception as e:
                 print(f"Could not read \"{file_path_str}\"")
                 pass
 
     results = deduplicate_results(results)
-    
+
     results.sort(key=lambda x: (-x["level"], x["file"], int(x["line"])))
 
     print(json.dumps(results, indent=4, ensure_ascii=False))
