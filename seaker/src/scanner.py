@@ -7,6 +7,7 @@ from pathlib import Path
 import os
 import re
 
+IGNORED_DIRS = ['.git', 'node_modules', 'vendor', '__pycache__', '.venv']
 
 def find_all_matches_with_positions(line, pattern):
     matches_with_pos = []
@@ -19,17 +20,29 @@ def find_all_matches_with_positions(line, pattern):
     return matches_with_pos
 
 
-def find_regex(root_dir: str, dict_pattern=None, ignore_dir_list: list = None,
-               ignore_file_list: list = None, ignore_matches: list = None):
+def find_regex(root_dir: str, dict_pattern=None, suppressed_dirs: list = None,
+               suppressed_files: list = None, suppressed_matches: list = None, ignored_files: list = None) -> dict:
     if dict_pattern is None:
         dict_pattern = load_patterns_from_json(PATTERNS_FILE)
 
-    ignore_dir_list  = [] if ignore_dir_list  is None else ignore_dir_list
-    ignore_file_list = [] if ignore_file_list is None else ignore_file_list
-    ignore_matches   = [] if ignore_matches   is None else ignore_matches
+    suppressed_dirs    = [] if suppressed_dirs    is None else suppressed_dirs
+    suppressed_files   = [] if suppressed_files   is None else suppressed_files
+    suppressed_matches = [] if suppressed_matches is None else suppressed_matches
+    ignored_files      = [] if ignored_files      is None else ignored_files
+
+    root_path = Path(root_dir).resolve()
+    suppressed_dirs = [str(root_path / d) for d in suppressed_dirs]
+    suppressed_files = [str(root_path / f) for f in suppressed_files]
+    ignored_files = [str(root_path / f) for f in ignored_files]
+
+    log('\n' + "=" * 20, LogLevel.VERBOSE)
+    log(f"root dir: {root_dir}", LogLevel.VERBOSE)
+    log(f"suppressed dirs:    {suppressed_dirs}",    LogLevel.VERBOSE)
+    log(f"suppressed files:   {suppressed_files}",   LogLevel.VERBOSE)
+    log(f"suppressed_matches: {suppressed_matches}", LogLevel.VERBOSE)
+    log(f"ignored files:      {ignored_files}",      LogLevel.VERBOSE)
 
     patterns = list(dict_pattern.keys())
-
     compiled_patterns = [
         (re.compile(p, re.IGNORECASE), dict_pattern[p][0], dict_pattern[p][1])
         for p in patterns
@@ -39,11 +52,26 @@ def find_regex(root_dir: str, dict_pattern=None, ignore_dir_list: list = None,
     results = []
 
     for root, dirs, files in os.walk(root_dir):
-        dirs[:] = [d for d in dirs if os.path.join(root, d) not in ignore_dir_list and d not in ignore_dir_list]
+        log("-" * 20, LogLevel.VERBOSE)
+        log(f"root:  {root}",  LogLevel.VERBOSE)
+        log(f"dirs:  {dirs}",  LogLevel.VERBOSE)
+        log(f"files: {files}", LogLevel.VERBOSE) 
+        
+        dirs[:] = [d for d in dirs 
+                   if str((Path(root) / d).resolve()) not in suppressed_dirs 
+                   and d not in IGNORED_DIRS]
+        files[:] = [f for f in files
+                    if str((Path(root) / f).resolve()) not in ignored_files]
+
+        log(f"AFTER FILTERING:", LogLevel.VERBOSE)
+        log(f"root:  {root}",  LogLevel.VERBOSE)
+        log(f"dirs:  {dirs}",  LogLevel.VERBOSE)
+        log(f"files: {files}", LogLevel.VERBOSE)
+        
         for file in files:
-            file_path = Path(root) / file
+            file_path = Path(root).resolve() / file
             file_path_str = str(file_path)
-            if file_path_str in ignore_file_list or file in ignore_file_list:
+            if file_path_str in suppressed_files or file in suppressed_files:
                 continue
             try:
                 with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
@@ -66,7 +94,7 @@ def find_regex(root_dir: str, dict_pattern=None, ignore_dir_list: list = None,
 
                         # Step 2: Mark matches that are directly ignored
                         for m in all_matches:
-                            m['is_ignored'] = m['text'] in ignore_matches
+                            m['is_ignored'] = m['text'] in suppressed_matches
 
                         # Step 3: For each match, determine if it should be shown
                         for current in all_matches:
@@ -116,8 +144,18 @@ def find_regex(root_dir: str, dict_pattern=None, ignore_dir_list: list = None,
                 log(f'Could not read "{file_path_str}"', LogLevel.ERROR)
                 pass
 
+    log("=" * 20 + '\n', LogLevel.VERBOSE)
+
     results = deduplicate_results(results)
 
-    results.sort(key=lambda x: (-x['level'], x['file'], int(x['line'])))
+    results.sort(key=lambda x: (-x['level'], x['file'], int(x['line'])))  
+    
+    results = { "findings" : results }
+    ignored = { "directories": suppressed_dirs, 
+                "files": suppressed_files, 
+                "texts": suppressed_matches
+              }
+    
+    results["ignored"] = ignored
     return results
 
