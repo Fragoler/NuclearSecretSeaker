@@ -37,7 +37,7 @@ def main():
     str_data = ""
     if args.command != "tui":
         result = subprocess.run(
-            [f"nuclearss-seaker -c {config_file}"],
+            ["nuclearss-seaker", "-c", f"{config_file}"],
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
             text=True
