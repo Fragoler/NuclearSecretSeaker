@@ -93,7 +93,7 @@ def print_help():
 
 def parse_config(config_path):
     ignore_dir_list = []
-    ignore_file_list = []
+    ignore_file_list = [DEFAULT_CONFIG_PATH]
     ignore_matches = []
     try:
         with open(config_path, 'r', encoding='utf-8') as f:
