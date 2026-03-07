@@ -8,22 +8,9 @@ import json
 PATTERNS_FILE = Path(__file__).parent / "patterns.json"
 
 DEFAULT_CONFIG_PATH = ".nuclearss"
+DEFAULT_ROOT_DIR = "."
 
 def load_patterns_from_json(json_path):
-    """
-    Load secret patterns from JSON file.
-    
-    JSON format:
-    {
-        "patterns": [
-            {"name": "Pattern Name", "regex": "regex_here", "priority": 200},
-            ...
-        ]
-    }
-    
-    Returns:
-        dict: {regex_pattern: (description, priority)}
-    """
     dict_pattern = {}
     
     with open(json_path, 'r', encoding='utf-8') as f:
@@ -46,10 +33,6 @@ patterns = list(dict_pattern.keys())
 
 
 def get_snippet_with_context(line, match, context_chars=40):
-    """
-    Extract snippet with context around the match.
-    Includes characters before and after the match for better context.
-    """
     match_start = line.find(match)
     if match_start == -1:
         return match
@@ -68,10 +51,6 @@ def get_snippet_with_context(line, match, context_chars=40):
 
 
 def deduplicate_results(results):
-    """
-    Deduplicate results by keeping highest-priority matches per line.
-    For each file+line combination, keeps only the highest-priority secret.
-    """
     grouped = {}
     for r in results:
         key = (r["file"], r["line"])
@@ -90,12 +69,13 @@ def deduplicate_results(results):
 
 
 def print_help():
-    help_text = """
+    help_text = f"""
         Usage: program [options]
 
         Options:
           -h, --help               See this message
-          -i DIR, --input DIR      Pick root directory (default: .)
+          -i DIR, --input DIR      Pick root directory (default: {DEFAULT_ROOT_DIR})
+          -c FILE, --config FILE   Specify config file (default: {DEFAULT_CONFIG_PATH})
           -x DIR, --ignore DIR     Ignore directory
           -x FILE, --ignore FILE   Ignore file
           -x FILE1 -x FILE2 -x DIR The way to ignore multiple dirs/files
@@ -142,7 +122,7 @@ def parse_config(config_path):
     
     return ignore_dir_list, ignore_file_list, ignore_matches
 
-def find_regex(root_dir: str = ".", ignore_dir_list: list = [], ignore_file_list: list = [], ignore_matches: list = []):
+def find_regex(root_dir: str = DEFAULT_ROOT_DIR, ignore_dir_list: list = [], ignore_file_list: list = [], ignore_matches: list = []):
     compiled_patterns = [
         (re.compile(p, re.IGNORECASE), dict_pattern[p][0], dict_pattern[p][1])
         for p in patterns
@@ -167,6 +147,7 @@ def find_regex(root_dir: str = ".", ignore_dir_list: list = [], ignore_file_list
                             matches = pattern.findall(line)
                             if matches:
                                 for match in set(matches):
+                                    if match in ignore_matches: continue
                                     snippet = get_snippet_with_context(line, match)
                                     result = {
                                         "file": str(file_path),
@@ -179,6 +160,7 @@ def find_regex(root_dir: str = ".", ignore_dir_list: list = [], ignore_file_list
                                     results.append(result)
 
             except Exception as e:
+                print(f"Could not read \"{file_path_str}\"")
                 pass
 
     results = deduplicate_results(results)
