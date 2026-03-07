@@ -75,6 +75,7 @@ def print_help():
         Options:
           -h, --help               See this message
           -i DIR, --input DIR      Pick root directory (default: {DEFAULT_ROOT_DIR})
+          -c FILE, --config FILE   Specify config file (default: {DEFAULT_CONFIG_PATH})
           -x DIR, --ignore DIR     Ignore directory
           -x FILE, --ignore FILE   Ignore file
           -x FILE1 -x FILE2 -x DIR The way to ignore multiple dirs/files
