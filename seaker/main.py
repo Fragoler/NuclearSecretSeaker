@@ -49,14 +49,14 @@ def get_snippet_with_context(line, match, context_chars=40):
     start = max(0, match_start - context_chars)
     end = min(len(line), match_start + len(match) + context_chars)
     
-    snippet = line[start:end].rstrip('\n\r')
+    snippet = line[start:end].rstrip('\n\r').strip()
     
     if start > 0:
         snippet = "..." + snippet
     if end < len(line):
         snippet = snippet + "..."
     
-    return snippet.strip()
+    return snippet
 
 
 def deduplicate_results(results):
@@ -122,7 +122,6 @@ def parse_config(config_path):
                     
     except FileNotFoundError:
         open(config_path, 'w').close()
-        print(f"Config file not found, default one was created at {config_path}")
     except Exception as e:
         print(f"Unknown error {e}")
     
