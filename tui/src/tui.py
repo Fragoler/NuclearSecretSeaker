@@ -1,8 +1,5 @@
 ﻿from ignore import ignore_text, ignore_path
 
-import os
-
-
 def get_color(level):
     intensity = level / 255.0
 
