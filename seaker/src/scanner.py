@@ -7,6 +7,7 @@ from pathlib import Path
 import os
 import re
 
+IGNORED_DIRS = ['.git', 'node_modules', 'vendor', '__pycache__', '.venv']
 
 def find_all_matches_with_positions(line, pattern):
     matches_with_pos = []
@@ -57,7 +58,10 @@ def find_regex(root_dir: str, dict_pattern=None, suppressed_dirs: list = None,
         log(f"dirs:  {dirs}",  LogLevel.VERBOSE)
         log(f"files: {files}", LogLevel.VERBOSE)
         
-        dirs[:] = [d for d in dirs if os.path.join(root, d) not in suppressed_dirs and d not in suppressed_dirs]
+        dirs[:] = [d for d in dirs 
+                   if os.path.join(root, d) not in suppressed_dirs 
+                   and d not in suppressed_dirs
+                   and d not in IGNORED_DIRS]
         files = [f for f in files if str(Path(root) / f) not in ignored_files and f not in ignored_files]
         
         for file in files:
