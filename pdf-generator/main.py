@@ -65,12 +65,41 @@ def generate_html_report(
     :param output_html_path: Path to save the HTML file
     :param background_image_path: Path to background image (optional)
     """
+    def level_to_category(level: int) -> str:
+        """Convert numeric level (0-255) to risk category."""
+        pct = (level / 255) * 100
+        if pct >= 80:
+            return "CRITICAL"
+        elif pct >= 60:
+            return "HIGH"
+        elif pct >= 40:
+            return "MEDIUM"
+        elif pct >= 20:
+            return "LOW"
+        else:
+            return "VERY LOW"
+
     def level_to_rgb(level: int) -> str:
+        """Convert level to RGB color (red-green gradient)."""
         level = max(0, min(255, level))
         r = level
         g = 255 - level
         b = 0
         return f"#{r:02X}{g:02X}{b:02X}"
+
+    def level_to_border_color(level: int) -> str:
+        """Get border color based on risk category."""
+        pct = (level / 255) * 100
+        if pct >= 80:
+            return "#dc3545"  # Red for CRITICAL
+        elif pct >= 60:
+            return "#fd7e14"  # Orange for HIGH
+        elif pct >= 40:
+            return "#ffc107"  # Yellow for MEDIUM
+        elif pct >= 20:
+            return "#28a745"  # Green for LOW
+        else:
+            return "#6c757d"  # Gray for VERY LOW
 
     # Encode background image as base64 if it exists
     bg_image_data = ""
@@ -81,7 +110,8 @@ def generate_html_report(
 
     # Calculate summary
     total_findings = len(findings)
-    avg_level = (sum(f.get('level', 0) for f in findings) / total_findings)*100/255 if total_findings > 0 else 0
+    avg_level = (sum(f.get('level', 0) for f in findings) / total_findings) * 100 / 255 if total_findings > 0 else 0
+    avg_level_category = level_to_category(int((avg_level / 100) * 255)) if total_findings > 0 else "N/A"
 
     # Build findings HTML
     findings_html = ""
@@ -91,12 +121,14 @@ def generate_html_report(
         description = finding.get('description', 'Potential secret detected')
         snippet = finding.get('snippet', '')
         level = int(finding.get('level', 128))
-        color = level_to_rgb(level)
+        category = level_to_category(level)
+        bg_color = level_to_rgb(level)
+        border_color = level_to_border_color(level)
 
         findings_html += f'''
         <div class="finding">
-            <p class="finding-desc">{description} in <code>{file_path}</code> on line <code>{line_num}</code>:</p>
-            <span class="snippet" style="background-color: {color}; border-color: {color};">{snippet}</span>
+            <p class="finding-desc">{description} in <code>{file_path}</code> on line <code>{line_num}</code> <span class="risk-badge" style="background-color: {border_color}; color: #fff;">{category}</span></p>
+            <span class="snippet" style="background-color: {bg_color}; border-color: {border_color};">{snippet}</span>
         </div>
         '''
 
@@ -223,19 +255,36 @@ def generate_html_report(
         .summary li {{
             margin-bottom: 0.5em;
         }}
+
+        .risk-badge {{
+            display: inline-block;
+            padding: 0.2em 0.6em;
+            border-radius: 0.3em;
+            font-size: 0.75em;
+            font-weight: 600;
+            margin-left: 0.5em;
+        }}
+
+        .avg-risk {{
+            display: inline-block;
+            padding: 0.3em 0.8em;
+            border-radius: 0.3em;
+            font-weight: 600;
+            color: #fff;
+        }}
     </style>
 </head>
 <body>
     {"<img class=\"background-image\" src=\"" + bg_image_data + "\" alt=\"\">" if bg_image_data else ""}
-    
+
     <h1>Secret Leak Report</h1>
     <p><strong>Generated:</strong> {os.popen('date').read().strip()}</p>
-    
+
     <h2>Summary</h2>
     <div class="summary">
         <ul>
             <li><strong>Total findings:</strong> {total_findings}</li>
-            <li><strong>Average risk level:</strong> {avg_level:.1f}/100</li>
+            <li><strong>Average risk level:</strong> <span class="avg-risk" style="background-color: {level_to_border_color(int((avg_level / 100) * 255)) if total_findings > 0 else '#6c757d'};">{avg_level:.1f}% ({avg_level_category})</span></li>
         </ul>
     </div>
     

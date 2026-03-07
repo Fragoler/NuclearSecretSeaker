@@ -48,7 +48,7 @@ def main():
     else: # TUI mode enables
         if args.path: 
             try:
-                with open(args.file, "r") as f:
+                with open(args.path, "r") as f:
                     str_data = f.read()
             except FileNotFoundError:
                 print("File not found.")
