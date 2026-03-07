@@ -28,11 +28,11 @@ jobs:
 
       - name: Build pdf-generator/main.py
         run: |
-          pyinstaller --onefile --distpath dist/pdf-generator pdf-generator/main.py
-
+          pyinstaller --onefile --add-data "background.png:." --distpath dist/pdf-generator pdf-generator/main.py 
+     
       - name: Build seaker/main.py
         run: |
-          pyinstaller --onefile --distpath dist/seaker seaker/main.py
+          pyinstaller --onefile --add-data "patterns.json:." --distpath dist/seaker seaker/main.py
 
       - name: Build tui/src/main.py
         run: |

@@ -5,6 +5,15 @@ from typing import List, Dict
 import base64
 
 
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
+
 def parse_json() -> List[Dict[str, str]]:
     """
     Parses JSON from stdin and returns a list of findings.
@@ -65,7 +74,7 @@ def generate_html_report(
 
     # Encode background image as base64 if it exists
     bg_image_data = ""
-    if background_image_path and os.path.exists(background_image_path):
+    if background_image_path and os.path.exists(resource_path(background_image_path)):
         with open(background_image_path, 'rb') as img_file:
             img_data = base64.b64encode(img_file.read()).decode('utf-8')
             bg_image_data = f"data:image/jpeg;base64,{img_data}"
