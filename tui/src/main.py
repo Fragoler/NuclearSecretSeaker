@@ -1,6 +1,4 @@
-﻿from tabnanny import check
-
-from tui import tui
+﻿from tui import tui
 from install import install
 from ignore import ignore_path
 from pathlib import Path
@@ -101,10 +99,6 @@ Examples:
                 sys.exit(1)
         else:
             str_data = sys.stdin.read()
-
-    # End process if no data provided
-    if not str_data:
-        sys.exit(0)
     
     if command == "report":
         result = subprocess.run(
@@ -125,7 +119,10 @@ Examples:
         print("Invalid JSON input.")
         sys.exit(1)
         
-    code = tui(data, config_file)
+    if not data['findings']:
+        sys.exit(0)
+        
+    code = tui(data['findings'], data['ignored'], config_file)
     sys.exit(code)
 
 if __name__ == "__main__":

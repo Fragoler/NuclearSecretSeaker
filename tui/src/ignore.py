@@ -1,5 +1,6 @@
 ﻿import os
 
+
 def ignore_path(path, config_path):
     if not os.path.exists(path):
         raise FileNotFoundError(f"Invalid path: {path}")
@@ -10,6 +11,15 @@ def ignore_path(path, config_path):
         entry = f"dir: {path}\n"
     else:
         raise ValueError(f"Unknown path type: {path}")
+
+    with open(config_path, "a", encoding="utf-8") as cfg:
+        cfg.write(entry)
+
+def ignore_file(path, config_path, force=False):
+    if not os.path.exists(path) and not force:
+        raise FileNotFoundError(f"Invalid path: {path}")
+
+    entry = f"file: {path}\n"
 
     with open(config_path, "a", encoding="utf-8") as cfg:
         cfg.write(entry)

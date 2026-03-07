@@ -15,7 +15,7 @@ def resource_path(relative_path):
         base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
 
-def parse_json() -> Dict[str, Any]:
+def parse_json() -> dict:
     """
     Parses JSON from stdin and returns a dictionary with findings and ignored items.
 
@@ -97,7 +97,7 @@ def parse_json() -> Dict[str, Any]:
 
 
 def generate_html_report(
-    data: Dict[str, Any],
+    data: dict,
     output_html_path: str = 'report.html',
     background_image_path: str = 'background.png'
 ) -> None:
