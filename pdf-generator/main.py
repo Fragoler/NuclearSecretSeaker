@@ -28,7 +28,8 @@ def parse_json() -> dict:
                 "description": "Description of finding",
                 "snippet": "code snippet",
                 "secret": "actual secret",
-                "level": 255
+                "level": 255,
+                "recommendation": "How to fix this issue"
             },
             ...
         ],
@@ -71,6 +72,7 @@ def parse_json() -> dict:
                 finding.setdefault('snippet', '')
                 finding.setdefault('secret', '')
                 finding.setdefault('level', 128)
+                finding.setdefault('recommendation', '')
 
                 # TODO: SANITIZE EVERYTHING HERE PLZ
             
@@ -171,16 +173,23 @@ def generate_html_report(
         description = finding.get('description', 'Potential secret detected')
         snippet = finding.get('snippet', '')
         secret = finding.get('secret', '')
+        recommendation = finding.get('recommendation', '')
         level = int(finding.get('level', 128))
         category = level_to_category(level)
         bg_color = level_to_rgb(level)
         border_color = level_to_border_color(level)
+
+        recommendation_icon = ''
+        if recommendation and recommendation.strip():
+            recommendation_escaped = html.escape(recommendation)
+            recommendation_icon = f'<div class="recommendation-icon tooltip" data-tooltip="{recommendation_escaped}">?</div>'
 
         findings_html += f'''
         <div class="finding">
             <div class="finding-header">
                 <span class="risk-badge" style="background-color: {border_color};">{category}</span>
                 <p class="finding-desc">{description} in <code>{file_path}</code> on line <code>{line_num}</code></p>
+                {recommendation_icon}
             </div>
             <span class="snippet" style="background-color: {bg_color}20; border-color: {border_color};">{snippet}</span>
             {f'<div class="secret"><strong>Secret:</strong> <code>{secret}</code></div>' if secret else ''}
@@ -352,16 +361,74 @@ def generate_html_report(
             align-items: center;
             gap: 0.8em;
             margin-bottom: 0.5em;
+            flex-wrap: wrap;
         }}
 
         .finding-header .risk-badge {{
-            margin-left: 0;  /* переопределяет предыдущий margin-left */
-            flex-shrink: 0;  /* предотвращает сжатие бейджа */
+            margin-left: 0;
+            flex-shrink: 0;
         }}
 
         .finding-desc {{
             margin-bottom: 0;
             flex: 1;
+            min-width: 200px;
+        }}
+
+        .recommendation-icon {{
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background-color: #6c757d;
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: help;
+            margin-left: 8px;
+            flex-shrink: 0;
+            transition: background-color 0.2s;
+        }}
+
+        .recommendation-icon:hover {{
+            background-color: #545b62;
+        }}
+
+        /* Tooltip styles */
+        .tooltip {{
+            position: relative;
+        }}
+
+        .tooltip:hover::after {{
+            content: attr(data-tooltip);
+            position: absolute;
+            right: 0;
+            top: 100%;
+            background: #333;
+            color: #fff;
+            padding: 0.5em 1em;
+            border-radius: 0.3em;
+            font-size: 0.85em;
+            white-space: pre-wrap;
+            max-width: 300px;
+            width: max-content;
+            z-index: 1000;
+            margin-top: 0.5em;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            border: 1px solid #444;
+        }}
+
+        .tooltip:hover::before {{
+            content: '';
+            position: absolute;
+            right: 10px;
+            top: 100%;
+            border: 6px solid transparent;
+            border-bottom-color: #333;
+            margin-top: -12px;
+            z-index: 1000;
         }}
 
         hr {{

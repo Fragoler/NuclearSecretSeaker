@@ -19,9 +19,10 @@ def load_patterns_from_json(json_path=None) -> dict:
         name = entry.get('name', 'Unknown')
         regex = entry.get('regex', '')
         priority = entry.get('priority', 100)
+        recommendation = entry.get('recommendation', '')
 
         if regex:
-            dict_pattern[regex] = (name, priority)
+            dict_pattern[regex] = (name, priority, recommendation)
 
     return dict_pattern
 
