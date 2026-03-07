@@ -1,8 +1,8 @@
 # NuclearSecretSeaker
 
-##### NuclearSS: The Utility that protects the git repository from leaks of tokens, passwords, secrets, and other confidential information.
+### NuclearSS: The Utility that protects the git repository from leaks of tokens, passwords, secrets, and other confidential information.
 
-###### How to build:
+#### How to build:
 
 if using **apt**
 ```
@@ -30,7 +30,7 @@ pyinstaller --onefile \
 ```
 
 
-###### How to use:
+#### How to use:
 
 ```
 nuclearss check /path    # Run default check /path directory
