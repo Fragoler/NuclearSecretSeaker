@@ -121,11 +121,8 @@ def parse_config(config_path):
                     print(f"Warning, unknown format in config on line {line_num}: {line}")
                     
     except FileNotFoundError:
-        if config_path == DEFAULT_CONFIG_PATH:
-            open(config_path, 'w').close()
-            print(f"Config file not found, default one was created at {DEFAULT_CONFIG_PATH}")
-        else:
-            print(f"Config file {config_path} not found. Try creating config on default path .nuclearss or specify it with -c (--config) option")
+        open(config_path, 'w').close()
+        print(f"Config file not found, default one was created at {config_path}")
     except Exception as e:
         print(f"Unknown error {e}")
     
