@@ -29,12 +29,6 @@ def find_regex(root_dir: str, dict_pattern=None, suppressed_dirs: list = None,
     suppressed_matches = [] if suppressed_matches is None else suppressed_matches
     ignored_files      = [] if ignored_files      is None else ignored_files
 
-    print(f"Loaded {len(dict_pattern)} patterns from {PATTERNS_FILE}")
-    print(f"Suppressed dirs: {suppressed_dirs}")
-    print(f"Suppressed files: {suppressed_files}")
-    print(f"Suppressed matches: {suppressed_matches}")
-    print(f"Ignored files: {ignored_files}")
-
     patterns = list(dict_pattern.keys())
 
     compiled_patterns = [
