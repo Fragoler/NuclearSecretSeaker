@@ -1,5 +1,5 @@
 from ignored import get_git_ignored_files
-from logger import LogLevel, log
+from logger import LogLevel, log, set_log_level
 from config import parse_config
 from patterns import load_patterns_from_json
 from scanner import find_regex
@@ -22,10 +22,21 @@ def main():
     parser.add_argument('-x', '--ignore', dest='ignore', action='append', default=[],
                         help='Ignore file or directory; may be specified multiple times')
 
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('-v', '--verbose', dest='verbose', action='store_true', default=False,
+                       help='Enable verbose output')
+    group.add_argument('-q', '--quiet', dest='quiet', action='store_true', default=False,
+                       help='Enable quiet output')
+
     args = parser.parse_args()
     root_dir = args.dir
     config_path = args.config
     ignore_list = args.ignore or []
+
+    if getattr(args, 'verbose', False):
+        set_log_level(LogLevel.VERBOSE)
+    elif getattr(args, 'quiet', False):
+        set_log_level(LogLevel.QUIET)
 
     suppressed_dirs, suppressed_files, suppressed_matches = parse_config(config_path)
     ignored_files = get_git_ignored_files(root_dir)
