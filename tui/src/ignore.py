@@ -21,7 +21,7 @@ def ignore_file(path, config_path, force=False):
     if not os.path.exists(path) and not force:
         raise FileNotFoundError(f"Invalid path: {path}")
 
-    entry = f"file: {str(Path(path).resolve())}\n"
+    entry = f"\nfile: {str(Path(path).resolve())}"
 
     with open(config_path, "a", encoding="utf-8") as cfg:
         cfg.write(entry)
